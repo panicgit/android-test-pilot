@@ -1,0 +1,50 @@
+{
+  "name": "@anthropic/android-test-pilot",
+  "version": "0.1.0",
+  "description": "Android app test automation tool powered by Claude Code — static analysis, log coverage, and device testing with 3-tier strategy",
+  "main": "index.js",
+  "bin": {
+    "android-test-pilot": "lib/index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc && chmod 755 lib/index.js",
+    "watch": "tsc --watch",
+    "clean": "rm -rf lib",
+    "test": "mocha --require ts-node/register test/**/*.ts"
+  },
+  "keywords": [
+    "android",
+    "testing",
+    "automation",
+    "mcp",
+    "claude-code",
+    "logcat",
+    "uiautomator"
+  ],
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.26.0",
+    "commander": "14.0.0",
+    "express": "5.1.0",
+    "fast-xml-parser": "5.5.7",
+    "zod": "^4.1.13",
+    "zod-to-json-schema": "3.25.0"
+  },
+  "optionalDependencies": {
+    "@mobilenext/mobilecli": "0.1.60",
+    "sharp": "^0.33.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/express": "^5.0.3",
+    "typescript": "^5.8.0"
+  },
+  "files": [
+    "lib",
+    ".claude/skills",
+    "templates"
+  ]
+}

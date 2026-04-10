@@ -1,11 +1,28 @@
 import path from "node:path";
-import { execFileSync } from "node:child_process";
+import crypto from "node:crypto";
+import { execFileSync, spawn, ChildProcess } from "node:child_process";
 import { existsSync } from "node:fs";
 
 import * as xml from "fast-xml-parser";
 
 import { ActionableError, Button, InstalledApp, Robot, ScreenElement, ScreenElementRect, ScreenSize, SwipeDirection, Orientation } from "./robot";
 import { validatePackageName, validateLocale } from "./utils";
+import { trace } from "./logger";
+
+// ─── Logcat Session Management ──────────────────────────────────────
+
+export interface LogcatSession {
+	id: string;
+	process: ChildProcess;
+	buffer: string[];
+	startTime: number;
+	maxDuration: number;
+	tags: string[];
+	timer: NodeJS.Timeout;
+}
+
+/** Global store for active logcat sessions across all devices */
+const activeSessions = new Map<string, LogcatSession>();
 
 export interface AndroidDevice {
 	deviceId: string;
@@ -513,6 +530,154 @@ export class AndroidRobot implements Robot {
 			width: right - left,
 			height: bottom - top,
 		};
+	}
+
+	// ─── Dumpsys Methods (Tier 1: text-based) ───────────────────────
+
+	/**
+	 * Get the current foreground Activity via dumpsys.
+	 * Returns parsed activity info as text.
+	 */
+	public getDumpsysActivity(): string {
+		try {
+			const output = this.adb("shell", "dumpsys", "activity", "activities")
+				.toString();
+			// Extract the focused activity line
+			const lines = output.split("\n");
+			const resumedLine = lines.find(l => l.includes("mResumedActivity") || l.includes("ResumedActivity"));
+			const focusedLine = lines.find(l => l.includes("mFocusedActivity"));
+			const topLine = lines.find(l => l.includes("topResumedActivity"));
+			return JSON.stringify({
+				resumed: resumedLine?.trim() || null,
+				focused: focusedLine?.trim() || null,
+				topResumed: topLine?.trim() || null,
+			});
+		} catch (err: any) {
+			return JSON.stringify({ error: err.message });
+		}
+	}
+
+	/**
+	 * Get the current focused window via dumpsys.
+	 */
+	public getDumpsysWindow(): string {
+		try {
+			const output = this.adb("shell", "dumpsys", "window", "windows")
+				.toString();
+			const lines = output.split("\n");
+			const focusedLine = lines.find(l => l.includes("mCurrentFocus") || l.includes("mFocusedWindow"));
+			const inputLine = lines.find(l => l.includes("mInputMethodTarget"));
+			return JSON.stringify({
+				currentFocus: focusedLine?.trim() || null,
+				inputMethodTarget: inputLine?.trim() || null,
+			});
+		} catch (err: any) {
+			return JSON.stringify({ error: err.message });
+		}
+	}
+
+	// ─── Logcat Session Methods (Tier 1: text-based) ────────────────
+
+	/**
+	 * Start a logcat streaming session.
+	 * Spawns `adb logcat` as a background process and buffers output.
+	 */
+	public startLogcat(tags: string[], durationSeconds: number): LogcatSession {
+		const sessionId = crypto.randomUUID();
+
+		// Build logcat filter args: TAG:D for each tag, *:S to silence others
+		const filterArgs = tags.map(tag => `${tag}:D`);
+		filterArgs.push("*:S");
+
+		const adbPath = getAdbPath();
+		const args = ["-s", this.deviceId, "logcat", "-v", "time", ...filterArgs];
+
+		trace(`Logcat start: ${adbPath} ${args.join(" ")}`);
+		const proc = spawn(adbPath, args, {
+			stdio: ["ignore", "pipe", "pipe"],
+		});
+
+		const session: LogcatSession = {
+			id: sessionId,
+			process: proc,
+			buffer: [],
+			startTime: Date.now(),
+			maxDuration: durationSeconds * 1000,
+			tags,
+			timer: setTimeout(() => {
+				trace(`Logcat session ${sessionId} auto-stopped (timeout ${durationSeconds}s)`);
+				this.stopLogcat(sessionId);
+			}, durationSeconds * 1000),
+		};
+
+		// Buffer stdout line by line
+		let partial = "";
+		proc.stdout?.on("data", (chunk: Buffer) => {
+			partial += chunk.toString();
+			const lines = partial.split("\n");
+			partial = lines.pop() || "";
+			for (const line of lines) {
+				if (line.trim()) {
+					session.buffer.push(line);
+				}
+			}
+		});
+
+		proc.on("error", (err) => {
+			trace(`Logcat session ${sessionId} error: ${err.message}`);
+		});
+
+		proc.on("exit", () => {
+			clearTimeout(session.timer);
+		});
+
+		activeSessions.set(sessionId, session);
+		return session;
+	}
+
+	/**
+	 * Read collected log lines from an active session.
+	 * @param since - If provided, only return lines after this index (for incremental reads)
+	 */
+	public readLogcat(sessionId: string, since?: number): { lines: string[]; lineCount: number } {
+		const session = activeSessions.get(sessionId);
+		if (!session) {
+			throw new ActionableError(`Logcat session "${sessionId}" not found. It may have expired or been stopped.`);
+		}
+
+		const startIndex = since ?? 0;
+		const lines = session.buffer.slice(startIndex);
+		return {
+			lines,
+			lineCount: session.buffer.length,
+		};
+	}
+
+	/**
+	 * Stop a logcat streaming session and return stats.
+	 */
+	public stopLogcat(sessionId: string): { totalLines: number; durationMs: number } {
+		const session = activeSessions.get(sessionId);
+		if (!session) {
+			throw new ActionableError(`Logcat session "${sessionId}" not found.`);
+		}
+
+		clearTimeout(session.timer);
+		session.process.kill("SIGTERM");
+		activeSessions.delete(sessionId);
+
+		const durationMs = Date.now() - session.startTime;
+		trace(`Logcat session ${sessionId} stopped: ${session.buffer.length} lines, ${durationMs}ms`);
+
+		return {
+			totalLines: session.buffer.length,
+			durationMs,
+		};
+	}
+
+	/** Get an active logcat session by ID (for server.ts to check existence) */
+	public static getSession(sessionId: string): LogcatSession | undefined {
+		return activeSessions.get(sessionId);
 	}
 }
 

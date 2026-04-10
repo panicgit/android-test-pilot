@@ -585,6 +585,14 @@ export class AndroidRobot implements Robot {
 	public startLogcat(tags: string[], durationSeconds: number): LogcatSession {
 		const sessionId = crypto.randomUUID();
 
+		// Validate tags to prevent filter manipulation (e.g. "*" would capture all logs)
+		const TAG_PATTERN = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
+		for (const tag of tags) {
+			if (!TAG_PATTERN.test(tag)) {
+				throw new ActionableError(`Invalid logcat tag "${tag}". Tags must be alphanumeric/underscore, 1-64 chars, starting with a letter or underscore.`);
+			}
+		}
+
 		// Build logcat filter args: TAG:D for each tag, *:S to silence others
 		const filterArgs = tags.map(tag => `${tag}:D`);
 		filterArgs.push("*:S");

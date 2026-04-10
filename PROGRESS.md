@@ -2,7 +2,7 @@
 
 > 마지막 업데이트: 2026-04-10
 
-## 현재 상태: Phase 2 완료 (Tier Plugin System)
+## 현재 상태: Phase 3 완료 (Logcat Streaming)
 
 ---
 
@@ -13,7 +13,7 @@
 | 0 | 설계 | **완료** | 2026-04-10 | 2026-04-10 |
 | 1 | Foundation (기반) | **완료** | 2026-04-10 | 2026-04-10 |
 | 2 | Tier Plugin System | **완료** | 2026-04-10 | 2026-04-10 |
-| 3 | Logcat Streaming | 대기 | - | - |
+| 3 | Logcat Streaming | **완료** | 2026-04-10 | 2026-04-10 |
 | 4 | Tier Implementations | 대기 | - | - |
 | 5 | Slash Commands & Scenario | 대기 | - | - |
 | 6 | Onboarding & Release | 대기 | - | - |
@@ -69,12 +69,20 @@
 
 ---
 
-## Phase 3: Logcat Streaming [대기]
+## Phase 3: Logcat Streaming [완료]
 
-- [ ] src/robot.ts — Robot 인터페이스에 logcat 메서드 추가
-- [ ] src/android.ts — AndroidRobot에 startLogcat/readLogcat/stopLogcat 구현
-- [ ] src/server.ts — atp_logcat_start, atp_logcat_read, atp_logcat_stop 도구 등록
-- [ ] 에뮬레이터 테스트: ATP_ 태그 로그 수집 확인
+- [x] src/android.ts — AndroidRobot에 logcat 세션 관리 추가 (startLogcat/readLogcat/stopLogcat)
+- [x] src/android.ts — AndroidRobot에 dumpsys 메서드 추가 (getDumpsysActivity/getDumpsysWindow)
+- [x] src/server.ts — 4개 MCP 도구 등록 (atp_dumpsys, atp_logcat_start/read/stop)
+- [x] 기존 테스트 11개 통과 확인
+- [ ] 에뮬레이터 E2E 테스트: ATP_ 태그 로그 수집 확인 (Phase 6에서 수행)
+
+### Phase 3 설계 변경
+
+| 변경 | 근거 |
+|------|------|
+| Robot 인터페이스 수정 안 함 | logcat/dumpsys는 Android 전용. iOS Robot에 불필요한 메서드 강제 방지 |
+| atp_dumpsys 도구 추가 | Tier 1이 logcat 전용 → 텍스트 기반(dumpsys + logcat)으로 확장됨 |
 
 ---
 

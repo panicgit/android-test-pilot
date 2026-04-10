@@ -796,5 +796,109 @@ export const createMcpServer = (): McpServer => {
 		}
 	);
 
+	// ─── android-test-pilot: Tier 1 text-based tools ───────────────
+
+	tool(
+		"atp_dumpsys",
+		"ATP Dumpsys",
+		"Get current Activity or Window info via dumpsys. Text-based, fast, no screenshot needed.",
+		{
+			device: z.string().describe("The device identifier to use."),
+			type: z.enum(["activity", "window"]).describe("Type of dumpsys query: 'activity' for current foreground Activity, 'window' for current focused window"),
+		},
+		{ readOnlyHint: true },
+		async ({ device, type }) => {
+			const robot = getRobotFromDevice(device);
+			if (!("getDumpsysActivity" in robot)) {
+				throw new ActionableError("dumpsys is only supported on Android devices");
+			}
+			const androidRobot = robot as AndroidRobot;
+			if (type === "activity") {
+				return androidRobot.getDumpsysActivity();
+			} else {
+				return androidRobot.getDumpsysWindow();
+			}
+		}
+	);
+
+	tool(
+		"atp_logcat_start",
+		"ATP Logcat Start",
+		"Start a logcat streaming session. Collects ATP_ tagged logs in the background. Returns a session ID for reading/stopping.",
+		{
+			device: z.string().describe("The device identifier to use."),
+			tags: z.array(z.string()).default(["ATP_SCREEN", "ATP_RENDER", "ATP_API"])
+				.describe("Logcat tags to filter (default: ATP_SCREEN, ATP_RENDER, ATP_API)"),
+			durationSeconds: z.coerce.number().int().min(10).max(300).default(60)
+				.describe("Max streaming duration in seconds. Auto-stops after this time. Default: 60"),
+		},
+		{ readOnlyHint: true },
+		async ({ device, tags, durationSeconds }) => {
+			const robot = getRobotFromDevice(device);
+			if (!("startLogcat" in robot)) {
+				throw new ActionableError("logcat is only supported on Android devices");
+			}
+			const androidRobot = robot as AndroidRobot;
+			const session = androidRobot.startLogcat(tags, durationSeconds);
+			return JSON.stringify({
+				sessionId: session.id,
+				tags: session.tags,
+				maxDurationSeconds: durationSeconds,
+				message: `Logcat streaming started. Use atp_logcat_read with sessionId to read logs.`,
+			});
+		}
+	);
+
+	tool(
+		"atp_logcat_read",
+		"ATP Logcat Read",
+		"Read collected log lines from an active logcat session. Use 'since' for incremental reads.",
+		{
+			sessionId: z.string().describe("Session ID returned by atp_logcat_start"),
+			since: z.coerce.number().int().optional()
+				.describe("Return only lines after this index (for incremental reads). Omit to get all lines."),
+		},
+		{ readOnlyHint: true },
+		async ({ sessionId, since }) => {
+			// Find which device owns this session
+			const session = AndroidRobot.getSession(sessionId);
+			if (!session) {
+				throw new ActionableError(`Logcat session "${sessionId}" not found. It may have expired or been stopped.`);
+			}
+			const startIndex = since ?? 0;
+			const lines = session.buffer.slice(startIndex);
+			return JSON.stringify({
+				lines,
+				lineCount: session.buffer.length,
+				readFrom: startIndex,
+				message: `${lines.length} lines returned (total buffer: ${session.buffer.length})`,
+			});
+		}
+	);
+
+	tool(
+		"atp_logcat_stop",
+		"ATP Logcat Stop",
+		"Stop an active logcat streaming session and return summary stats.",
+		{
+			device: z.string().describe("The device identifier to use."),
+			sessionId: z.string().describe("Session ID returned by atp_logcat_start"),
+		},
+		{ destructiveHint: true },
+		async ({ device, sessionId }) => {
+			const robot = getRobotFromDevice(device);
+			if (!("stopLogcat" in robot)) {
+				throw new ActionableError("logcat is only supported on Android devices");
+			}
+			const androidRobot = robot as AndroidRobot;
+			const stats = androidRobot.stopLogcat(sessionId);
+			return JSON.stringify({
+				totalLines: stats.totalLines,
+				durationMs: stats.durationMs,
+				message: `Logcat session stopped. Collected ${stats.totalLines} lines over ${Math.round(stats.durationMs / 1000)}s.`,
+			});
+		}
+	);
+
 	return server;
 };

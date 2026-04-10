@@ -2,7 +2,7 @@
 
 > 마지막 업데이트: 2026-04-10
 
-## 현재 상태: Phase 1 완료 (Foundation)
+## 현재 상태: Phase 2 완료 (Tier Plugin System)
 
 ---
 
@@ -12,7 +12,7 @@
 |-------|------|------|--------|--------|
 | 0 | 설계 | **완료** | 2026-04-10 | 2026-04-10 |
 | 1 | Foundation (기반) | **완료** | 2026-04-10 | 2026-04-10 |
-| 2 | Tier Plugin System | 대기 | - | - |
+| 2 | Tier Plugin System | **완료** | 2026-04-10 | 2026-04-10 |
 | 3 | Logcat Streaming | 대기 | - | - |
 | 4 | Tier Implementations | 대기 | - | - |
 | 5 | Slash Commands & Scenario | 대기 | - | - |
@@ -60,12 +60,12 @@
 
 ---
 
-## Phase 2: Tier Plugin System [대기]
+## Phase 2: Tier Plugin System [완료]
 
-- [ ] src/tiers/types.ts — TierContext, TierResult, TierStatus 타입
-- [ ] src/tiers/abstract-tier.ts — AbstractTier 추상 클래스
-- [ ] src/tiers/tier-runner.ts — TierRunner 체인 실행기
-- [ ] 단위 테스트: FALLBACK 체인, ERROR 처리, 모든 Tier 소진 케이스
+- [x] src/tiers/types.ts — TierContext, TierResult, TierStatus, AppMap, TestStep 등 타입
+- [x] src/tiers/abstract-tier.ts — AbstractTier 추상 클래스 (canHandle, execute)
+- [x] src/tiers/tier-runner.ts — TierRunner 체인 실행기 (priority 정렬, FALLBACK 체인)
+- [x] 단위 테스트: 11개 통과 (SUCCESS, FAIL, FALLBACK 체인, ERROR, 예외 처리, 빈 목록, priority 정렬, previousTierResult 전달)
 
 ---
 

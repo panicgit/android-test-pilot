@@ -13,7 +13,7 @@
     "build": "tsc && chmod 755 lib/index.js",
     "watch": "tsc --watch",
     "clean": "rm -rf lib",
-    "test": "mocha --require ts-node/register test/**/*.ts"
+    "test": "npx tsx --test test/**/*.test.ts"
   },
   "keywords": [
     "android",

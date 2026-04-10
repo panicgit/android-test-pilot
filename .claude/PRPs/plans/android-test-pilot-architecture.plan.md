@@ -110,7 +110,7 @@ android-test-pilot/
 │       ├── types.ts                      # TierContext, TierResult, TierStatus 타입
 │       ├── abstract-tier.ts              # AbstractTier 인터페이스
 │       ├── tier-runner.ts                # TierRunner — Tier 체인 실행기
-│       ├── logcat-tier.ts                # Tier 1: logcat streaming
+│       ├── text-tier.ts                # Tier 1: 텍스트 기반 (dumpsys + logcat)
 │       ├── uiautomator-tier.ts           # Tier 2: uiautomator + accessibility tree
 │       └── screenshot-tier.ts            # Tier 3: 스크린샷 (mobile-mcp 기존 코드 래핑)
 ├── templates/
@@ -539,7 +539,7 @@ ls -la .claude/app-map/ 2>/dev/null || echo "산출물 없음"
 | `예상 logcat: ATP_RENDER` | `ATP_RENDER` | `renderState:` 뒤의 key=value 쌍 파싱 |
 | `예상 logcat: ATP_API` | `ATP_API` | `apiResponse:` 뒤의 endpoint, status, body 파싱 |
 
-**파싱 전략**: Tier 1(logcat-tier.ts)이 로그 라인을 정규식으로 파싱:
+**파싱 전략**: Tier 1(text-tier.ts)이 dumpsys 출력 + 로그 라인을 파싱:
 ```
 ATP_SCREEN → /enter:\s*(\S+)/
 ATP_RENDER → /renderState:\s*screen=(\w+),\s*(.+)/  → key=value 쌍 분리
@@ -631,7 +631,7 @@ abstract class AbstractTier {
    * @returns true이면 execute() 호출, false이면 다음 Tier로 건너뜀
    *
    * 판단 기준 예시:
-   * - LogcatTier: logcat에 ATP_ 태그 로그가 실제로 찍히고 있는지
+   * - TextTier: logcat에 ATP_ 태그 로그가 실제로 찍히고 있는지
    * - UiAutomatorTier: 디바이스가 연결되어 있고 uiautomator가 응답하는지
    * - ScreenshotTier: 항상 true (최후 수단)
    */
@@ -661,7 +661,7 @@ class TierRunner {
   constructor(tiers?: AbstractTier[]) {
     // 기본 Tier 목록 (하드코딩, 오픈소스 초기 버전 단순함 우선)
     this.tiers = tiers ?? [
-      new LogcatTier(),       // priority: 1
+      new TextTier(),       // priority: 1
       new UiAutomatorTier(),  // priority: 2
       new ScreenshotTier(),   // priority: 3
     ];
@@ -694,9 +694,9 @@ class TierRunner {
 ```
 TierRunner.run(context)
   │
-  ├─ Tier 1 (LogcatTier, priority=1)
+  ├─ Tier 1 (TextTier, priority=1) — dumpsys + logcat
   │   ├─ canHandle(context)
-  │   │   ├─ true  → execute(context)
+  │   │   ├─ true  → execute(context) [dumpsys activity/window + logcat 파싱]
   │   │   │          ├─ SUCCESS/FAIL → 결과 반환 (종료)
   │   │   │          └─ FALLBACK     → fallbackHint 저장, 다음 Tier로
   │   │   └─ false → 다음 Tier로
@@ -720,9 +720,14 @@ TierRunner.run(context)
 
 ### 각 Tier 구현 설계
 
-**LogcatTier (Tier 1)**:
-- `canHandle()`: `atp_logcat_read` 도구로 최근 로그 확인. ATP_ 태그 로그가 1줄 이상 있으면 true
-- `execute()`: 시나리오 스텝의 `expectedLogcat` 패턴과 실제 로그를 매칭. 매칭되면 SUCCESS, 로그는 있지만 패턴 불일치면 FAIL, ATP_ 로그 자체가 없으면 FALLBACK
+**TextTier (Tier 1) — 텍스트 기반 (dumpsys + logcat)**:
+- `canHandle()`: 디바이스 연결 여부 확인 + `atp_logcat_read`로 ATP_ 태그 로그 존재 확인
+- `execute()`:
+  1. `adb shell dumpsys activity` → 현재 포그라운드 Activity 파악
+  2. `adb shell dumpsys window` → 현재 포커스 윈도우 파악
+  3. logcat 버퍼에서 ATP_ 태그 로그 매칭 (renderState, apiResponse)
+  4. dumpsys + logcat 결과를 종합하여 시나리오 스텝 검증
+  5. 판단 가능하면 SUCCESS/FAIL, 정보 부족하면 FALLBACK
 
 **UiAutomatorTier (Tier 2)**:
 - `canHandle()`: `adb shell uiautomator dump` 실행 가능 여부 확인 (디바이스 연결 + 화면 ON)
@@ -748,7 +753,7 @@ class MyCustomTier extends AbstractTier {
 
 // 2. TierRunner 생성 시 포함
 const runner = new TierRunner([
-  new LogcatTier(),
+  new TextTier(),
   new MyCustomTier(),    // ← 추가
   new UiAutomatorTier(),
   new ScreenshotTier(),
@@ -778,10 +783,11 @@ const runner = new TierRunner([
 
 ### MCP 도구 인터페이스
 
-mobile-mcp 포크의 `server.ts`에 3개 도구를 추가한다:
+mobile-mcp 포크의 `server.ts`에 4개 도구를 추가한다:
 
 | 도구명 | 역할 | 입력 | 출력 |
 |--------|------|------|------|
+| `atp_dumpsys` | 현재 Activity/Window 텍스트 조회 | `{ deviceId?, type: "activity" \| "window" }` | `{ foregroundActivity, focusedWindow }` |
 | `atp_logcat_start` | logcat streaming 시작 | `{ deviceId?, tags?: string[], durationSeconds?: number }` | `{ sessionId: string }` |
 | `atp_logcat_read` | 현재까지 수집된 로그 읽기 | `{ sessionId: string, since?: number }` | `{ lines: string[], lineCount: number }` |
 | `atp_logcat_stop` | logcat streaming 중단 | `{ sessionId: string }` | `{ totalLines: number, durationMs: number }` |
@@ -878,7 +884,7 @@ Log.d("ATP_API", "apiResponse: endpoint=POST /api/login, status=401, body={\"err
 
 ### 파싱 전략
 
-logcat-tier.ts가 수집된 로그 라인을 파싱하는 방식:
+text-tier.ts가 dumpsys 출력 + 수집된 로그 라인을 파싱하는 방식:
 
 ```
 1. 라인 분리: buffer에서 줄 단위로 읽기
@@ -1137,8 +1143,8 @@ claude
 - **ACTION**: `src/tiers/tier-runner.ts` 체인 실행 로직
 - **VALIDATE**: 단위 테스트로 FALLBACK 체인 검증
 
-### Task 5: LogcatTier 구현
-- **ACTION**: `src/tiers/logcat-tier.ts` + `server.ts`에 atp_logcat_start/read/stop 도구 등록
+### Task 5: TextTier 구현
+- **ACTION**: `src/tiers/text-tier.ts` (dumpsys + logcat 통합) + `server.ts`에 atp_logcat_start/read/stop + atp_dumpsys 도구 등록
 - **VALIDATE**: 에뮬레이터에서 logcat 스트리밍 테스트
 
 ### Task 6: UiAutomatorTier 구현

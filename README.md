@@ -182,7 +182,7 @@ android-test-pilot/
 │       ├── types.ts             # TierContext, TierResult 타입
 │       ├── abstract-tier.ts     # AbstractTier 추상 클래스
 │       ├── tier-runner.ts       # TierRunner 체인 실행기
-│       ├── logcat-tier.ts       # Tier 1: logcat streaming
+│       ├── text-tier.ts         # Tier 1: 텍스트 기반 (dumpsys + logcat)
 │       ├── uiautomator-tier.ts  # Tier 2: UI 트리
 │       └── screenshot-tier.ts   # Tier 3: 스크린샷
 ├── templates/

@@ -24,6 +24,21 @@ export interface LogcatSession {
 /** Global store for active logcat sessions across all devices */
 const activeSessions = new Map<string, LogcatSession>();
 
+/** Max lines to keep in a logcat session buffer to prevent memory exhaustion */
+const MAX_LOGCAT_LINES = 50_000;
+
+/** Clean up all active logcat sessions (called on process exit) */
+const cleanupAllSessions = () => {
+	for (const [, session] of activeSessions) {
+		clearTimeout(session.timer);
+		session.process.kill("SIGTERM");
+	}
+	activeSessions.clear();
+};
+process.on("exit", cleanupAllSessions);
+process.on("SIGTERM", () => { cleanupAllSessions(); process.exit(0); });
+process.on("SIGINT", () => { cleanupAllSessions(); process.exit(0); });
+
 export interface AndroidDevice {
 	deviceId: string;
 	deviceType: "tv" | "mobile";
@@ -618,17 +633,29 @@ export class AndroidRobot implements Robot {
 			}, durationSeconds * 1000),
 		};
 
-		// Buffer stdout line by line
+		// Buffer stdout line by line (capped at MAX_LOGCAT_LINES)
 		let partial = "";
 		proc.stdout?.on("data", (chunk: Buffer) => {
 			partial += chunk.toString();
 			const lines = partial.split("\n");
 			partial = lines.pop() || "";
 			for (const line of lines) {
-				if (line.trim()) {
+				if (line.trim() && session.buffer.length < MAX_LOGCAT_LINES) {
 					session.buffer.push(line);
 				}
 			}
+		});
+
+		// Flush remaining partial line on stream end
+		proc.stdout?.on("end", () => {
+			if (partial.trim() && session.buffer.length < MAX_LOGCAT_LINES) {
+				session.buffer.push(partial);
+			}
+		});
+
+		// Log stderr for debugging (ADB errors, device disconnects)
+		proc.stderr?.on("data", (chunk: Buffer) => {
+			trace(`Logcat session ${sessionId} stderr: ${chunk.toString().trim()}`);
 		});
 
 		proc.on("error", (err) => {
@@ -637,6 +664,7 @@ export class AndroidRobot implements Robot {
 
 		proc.on("exit", () => {
 			clearTimeout(session.timer);
+			activeSessions.delete(sessionId);
 		});
 
 		activeSessions.set(sessionId, session);

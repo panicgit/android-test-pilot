@@ -38,12 +38,13 @@ export class TierRunner {
 			let canHandle: boolean;
 			try {
 				canHandle = await tier.canHandle(currentContext);
-			} catch (err: any) {
-				trace(`TierRunner: ${tier.name}.canHandle() threw: ${err.message}`);
+			} catch (err: unknown) {
+				const message = err instanceof Error ? err.message : String(err);
+				trace(`TierRunner: ${tier.name}.canHandle() threw: ${message}`);
 				return {
 					tier: tier.name,
 					status: "ERROR",
-					error: `canHandle() failed: ${err.message}`,
+					error: `canHandle() failed: ${message}`,
 				};
 			}
 
@@ -56,12 +57,13 @@ export class TierRunner {
 			let result: TierResult;
 			try {
 				result = await tier.execute(currentContext);
-			} catch (err: any) {
-				trace(`TierRunner: ${tier.name}.execute() threw: ${err.message}`);
+			} catch (err: unknown) {
+				const message = err instanceof Error ? err.message : String(err);
+				trace(`TierRunner: ${tier.name}.execute() threw: ${message}`);
 				return {
 					tier: tier.name,
 					status: "ERROR",
-					error: `execute() failed: ${err.message}`,
+					error: `execute() failed: ${message}`,
 				};
 			}
 

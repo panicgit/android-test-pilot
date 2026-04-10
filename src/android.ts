@@ -13,6 +13,7 @@ import { trace } from "./logger";
 
 export interface LogcatSession {
 	id: string;
+	deviceId: string;
 	process: ChildProcess;
 	buffer: string[];
 	startTime: number;
@@ -622,6 +623,7 @@ export class AndroidRobot implements Robot {
 
 		const session: LogcatSession = {
 			id: sessionId,
+			deviceId: this.deviceId,
 			process: proc,
 			buffer: [],
 			startTime: Date.now(),

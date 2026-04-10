@@ -854,24 +854,29 @@ export const createMcpServer = (): McpServer => {
 		"ATP Logcat Read",
 		"Read collected log lines from an active logcat session. Use 'since' for incremental reads.",
 		{
+			device: z.string().describe("The device identifier to use."),
 			sessionId: z.string().describe("Session ID returned by atp_logcat_start"),
 			since: z.coerce.number().int().optional()
 				.describe("Return only lines after this index (for incremental reads). Omit to get all lines."),
 		},
 		{ readOnlyHint: true },
-		async ({ sessionId, since }) => {
-			// Find which device owns this session
-			const session = AndroidRobot.getSession(sessionId);
-			if (!session) {
-				throw new ActionableError(`Logcat session "${sessionId}" not found. It may have expired or been stopped.`);
+		async ({ device, sessionId, since }) => {
+			const robot = getRobotFromDevice(device);
+			if (!("readLogcat" in robot)) {
+				throw new ActionableError("logcat is only supported on Android devices");
 			}
-			const startIndex = since ?? 0;
-			const lines = session.buffer.slice(startIndex);
+			// Verify session belongs to this device
+			const session = AndroidRobot.getSession(sessionId);
+			if (session && session.deviceId !== device) {
+				throw new ActionableError(`Logcat session "${sessionId}" belongs to a different device.`);
+			}
+			const androidRobot = robot as AndroidRobot;
+			const result = androidRobot.readLogcat(sessionId, since);
 			return JSON.stringify({
-				lines,
-				lineCount: session.buffer.length,
-				readFrom: startIndex,
-				message: `${lines.length} lines returned (total buffer: ${session.buffer.length})`,
+				lines: result.lines,
+				lineCount: result.lineCount,
+				readFrom: since ?? 0,
+				message: `${result.lines.length} lines returned (total buffer: ${result.lineCount})`,
 			});
 		}
 	);

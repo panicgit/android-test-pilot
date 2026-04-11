@@ -78,7 +78,14 @@ export class TextTier extends AbstractTier {
 		const matchResults: Array<{ tag: string; pattern: string; matched: boolean; line?: string }> = [];
 
 		for (const expected of expectedLogcat) {
-			const regex = new RegExp(expected.pattern);
+			let regex: RegExp;
+			try {
+				regex = new RegExp(expected.pattern);
+			} catch {
+				// Invalid regex pattern — treat as unmatched
+				matchResults.push({ tag: expected.tag, pattern: expected.pattern, matched: false });
+				continue;
+			}
 			const matchingLine = logLines.find(line =>
 				line.includes(expected.tag) && regex.test(line)
 			);

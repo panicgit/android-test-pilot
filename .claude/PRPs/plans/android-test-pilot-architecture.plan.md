@@ -142,7 +142,7 @@ android-test-pilot/
   "mcpServers": {
     "android-test-pilot": {
       "command": "npx",
-      "args": ["-y", "@atp/android-test-pilot"],
+      "args": ["-y", "@anthropic/android-test-pilot"],
       "env": {
         "MAX_MCP_OUTPUT_TOKENS": "50000"
       }
@@ -155,7 +155,7 @@ android-test-pilot/
 
 ```json
 {
-  "name": "@atp/android-test-pilot",
+  "name": "@anthropic/android-test-pilot",
   "version": "0.1.0",
   "type": "module",
   "bin": {
@@ -1014,7 +1014,7 @@ npm run build
 
 또는 npm 패키지로 설치 (게시 후):
 ```bash
-npm install -g @atp/android-test-pilot
+npm install -g @anthropic/android-test-pilot
 ```
 
 **[2] MCP 서버 등록**
@@ -1023,7 +1023,7 @@ npm install -g @atp/android-test-pilot
 ```bash
 # 테스트 대상 Android 프로젝트 디렉토리에서 실행
 cd /path/to/my-android-app
-claude mcp add --transport stdio --scope project android-test-pilot -- npx -y @atp/android-test-pilot
+claude mcp add --transport stdio --scope project android-test-pilot -- npx -y @anthropic/android-test-pilot
 ```
 
 방법 B — .mcp.json 직접 작성:
@@ -1034,7 +1034,7 @@ cat > .mcp.json << 'EOF'
   "mcpServers": {
     "android-test-pilot": {
       "command": "npx",
-      "args": ["-y", "@atp/android-test-pilot"],
+      "args": ["-y", "@anthropic/android-test-pilot"],
       "env": {
         "MAX_MCP_OUTPUT_TOKENS": "50000"
       }

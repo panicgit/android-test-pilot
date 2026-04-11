@@ -53,8 +53,10 @@ Using `.claude/app-map/api_scenarios.json`, check each API call site:
 
 Expected log format:
 ```kotlin
-Log.d("ATP_API", "apiResponse: endpoint=${endpoint}, status=${status}, body=${responseBody}")
+Log.d("ATP_API", "apiResponse: endpoint=${endpoint}, status=${status}, bodyLength=${responseBody.length}")
 ```
+
+**Security note**: Avoid logging full response bodies (`body=${responseBody}`) as they may contain PII, authentication tokens, or other sensitive data. Log `bodyLength` instead, or redact sensitive fields before logging.
 
 Report any API call sites missing this log.
 

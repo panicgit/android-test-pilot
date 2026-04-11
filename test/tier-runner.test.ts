@@ -230,9 +230,10 @@ describe("TierRunner", () => {
 		const runner = new TierRunner([tier1, tier2]);
 		await runner.run(makeContext());
 
-		assert.ok(capturedContext);
-		assert.strictEqual(capturedContext!.previousTierResult?.tier, "logcat");
-		assert.strictEqual(capturedContext!.previousTierResult?.fallbackHint, "no logs");
+		assert.ok(capturedContext !== null);
+		if (capturedContext === null) throw new Error("unreachable");
+		assert.strictEqual(capturedContext.previousTierResult?.tier, "logcat");
+		assert.strictEqual(capturedContext.previousTierResult?.fallbackHint, "no logs");
 	});
 
 	it("handles full chain: FALLBACK → FALLBACK → SUCCESS", async () => {

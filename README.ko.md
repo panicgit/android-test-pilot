@@ -190,6 +190,20 @@ android-test-pilot/
 └── package.json
 ```
 
+## MCP 도구
+
+android-test-pilot은 5개의 MCP 도구를 제공합니다:
+
+| 도구 | 설명 |
+|------|------|
+| `atp_run_step` | 단일 테스트 스텝을 3-tier 자동 전환으로 실행 (텍스트 → uiautomator → 스크린샷) |
+| `atp_dumpsys` | 현재 Activity 또는 포커스 윈도우 조회 (텍스트 기반) |
+| `atp_logcat_start` | ATP 태그 필터링으로 logcat 스트리밍 세션 시작 |
+| `atp_logcat_read` | 활성 세션에서 수집된 로그 라인 읽기 (증분 읽기 지원) |
+| `atp_logcat_stop` | logcat 세션 중단 및 통계 반환 |
+
+기존 [mobile-mcp](https://github.com/mobile-next/mobile-mcp) 도구(`mobile_take_screenshot`, `mobile_list_elements_on_screen`, `mobile_click_on_screen_at_coordinates` 등)도 모두 사용 가능합니다.
+
 ## Tier 플러그인 확장
 
 커스텀 Tier를 추가하여 테스트 전략을 확장할 수 있습니다.

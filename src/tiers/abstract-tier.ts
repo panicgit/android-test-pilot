@@ -10,23 +10,33 @@
  */
 
 import { TierContext, TierResult } from "./types";
+import { AndroidRobot } from "../android";
 
 export abstract class AbstractTier {
-	/** Human-readable name for this Tier (e.g. "logcat", "uiautomator", "screenshot") */
+	/** Human-readable name for this Tier (e.g. "text", "uiautomator", "screenshot") */
 	abstract readonly name: string;
 
 	/** Execution priority — lower values run first (e.g. 1, 2, 3) */
 	abstract readonly priority: number;
 
+	/** Cached AndroidRobot instance */
+	private _robot: AndroidRobot | null = null;
+
+	/**
+	 * Get or create an AndroidRobot for the given device.
+	 * Re-creates the robot if the device ID changes.
+	 */
+	protected getAndroidRobot(context: TierContext): AndroidRobot {
+		if (!this._robot || context.deviceId !== this._robot.getDeviceId()) {
+			this._robot = new AndroidRobot(context.deviceId);
+		}
+		return this._robot;
+	}
+
 	/**
 	 * Check whether this Tier can handle the current test step.
 	 *
 	 * Return true to proceed with execute(), false to skip to the next Tier.
-	 *
-	 * Examples:
-	 * - LogcatTier: returns true if ATP_ tag logs are being emitted
-	 * - UiAutomatorTier: returns true if device is connected and responsive
-	 * - ScreenshotTier: always returns true (last resort)
 	 */
 	abstract canHandle(context: TierContext): Promise<boolean>;
 

@@ -12,20 +12,10 @@
 
 import { AbstractTier } from "./abstract-tier";
 import { TierContext, TierResult } from "./types";
-import { AndroidRobot } from "../android";
 
 export class ScreenshotTier extends AbstractTier {
 	readonly name = "screenshot";
 	readonly priority = 3;
-
-	private robot: AndroidRobot | null = null;
-
-	private getAndroidRobot(context: TierContext): AndroidRobot {
-		if (!this.robot || context.deviceId !== (this.robot as any).deviceId) {
-			this.robot = new AndroidRobot(context.deviceId);
-		}
-		return this.robot;
-	}
 
 	async canHandle(_context: TierContext): Promise<boolean> {
 		// Screenshot is always available as last resort

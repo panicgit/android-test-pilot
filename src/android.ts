@@ -110,6 +110,10 @@ export class AndroidRobot implements Robot {
 	public constructor(private deviceId: string) {
 	}
 
+	public getDeviceId(): string {
+		return this.deviceId;
+	}
+
 	public adb(...args: string[]): Buffer {
 		return execFileSync(getAdbPath(), ["-s", this.deviceId, ...args], {
 			maxBuffer: MAX_BUFFER_SIZE,

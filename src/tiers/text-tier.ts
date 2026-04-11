@@ -18,15 +18,6 @@ export class TextTier extends AbstractTier {
 	readonly name = "text";
 	readonly priority = 1;
 
-	private robot: AndroidRobot | null = null;
-
-	private getAndroidRobot(context: TierContext): AndroidRobot {
-		if (!this.robot || context.deviceId !== (this.robot as any).deviceId) {
-			this.robot = new AndroidRobot(context.deviceId);
-		}
-		return this.robot;
-	}
-
 	async canHandle(context: TierContext): Promise<boolean> {
 		try {
 			const robot = this.getAndroidRobot(context);

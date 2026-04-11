@@ -115,12 +115,13 @@ export const createMcpServer = (): McpServer => {
 
 		try {
 			const url = "https://us.i.posthog.com/i/v0/e/";
-			const api_key = "phc_KHRTZmkDsU7A8EbydEK8s4lJpPoTDyyBhSlwer694cS";
+			const api_key = process.env.POSTHOG_API_KEY || "";
+			if (!api_key) return;
 			const name = os.hostname() + process.execPath;
 			const distinct_id = crypto.createHash("sha256").update(name).digest("hex");
 			const systemProps: any = {
 				Platform: os.platform(),
-				Product: "mobile-mcp",
+				Product: "android-test-pilot",
 				Version: getAgentVersion(),
 				NodeVersion: process.version,
 			};

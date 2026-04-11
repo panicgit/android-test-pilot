@@ -11,6 +11,9 @@ const startSseServer = async (host: string, port: number) => {
 	const server = createMcpServer();
 
 	const authToken = process.env.MOBILEMCP_AUTH;
+	if (!authToken) {
+		error("WARNING: SSE server running without authentication. Set MOBILEMCP_AUTH env var to enable bearer token auth.");
+	}
 	if (authToken) {
 		app.use((req, res, next) => {
 			if (req.headers.authorization !== `Bearer ${authToken}`) {

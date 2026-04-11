@@ -78,43 +78,36 @@ Step 0 결과를 기반으로, 테스트에 필요한 logcat 로그가 소스코
 - Claude Code
 - Android 디바이스 또는 에뮬레이터 (USB 디버깅 활성화)
 
-### 설치 방법
+### 방법 A: 플러그인 설치 (권장)
+
+Claude Code 플러그인으로 설치 — MCP 서버 + 슬래시 커맨드를 한 번에:
+
+```
+/plugin
+```
+
+마켓플레이스 추가 시 `panicgit/android-test-pilot` 입력 후:
+
+```
+/reload-plugins
+```
+
+완료. 모든 `/atp:*` 커맨드와 MCP 도구를 바로 사용할 수 있습니다.
+
+### 방법 B: 수동 설치
 
 ```bash
+# 1. 클론 및 빌드
 git clone https://github.com/panicgit/android-test-pilot
 cd android-test-pilot
 npm install
 npm run build
-```
 
-### MCP 서버 등록
-
-테스트 대상 Android 프로젝트 디렉토리에서:
-
-```bash
-# CLI로 등록 (권장)
+# 2. MCP 서버 등록
 claude mcp add --transport stdio --scope project android-test-pilot \
-  -- node /path/to/android-test-pilot/lib/index.js
+  -- npx -y @panicgit/android-test-pilot
 
-# 또는 .mcp.json 직접 작성
-cat > .mcp.json << 'EOF'
-{
-  "mcpServers": {
-    "android-test-pilot": {
-      "command": "node",
-      "args": ["/path/to/android-test-pilot/lib/index.js"],
-      "env": {
-        "MAX_MCP_OUTPUT_TOKENS": "50000"
-      }
-    }
-  }
-}
-EOF
-```
-
-### 슬래시 커맨드 설치
-
-```bash
+# 3. 슬래시 커맨드 복사
 cp -r /path/to/android-test-pilot/.claude/skills/atp \
       /path/to/my-android-app/.claude/skills/atp
 ```

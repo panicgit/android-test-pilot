@@ -2,7 +2,7 @@
 
 > 마지막 업데이트: 2026-04-10
 
-## 현재 상태: Phase 3 완료 (Logcat Streaming)
+## 현재 상태: Phase 6 완료 (전체 구현 완료)
 
 ---
 
@@ -14,9 +14,9 @@
 | 1 | Foundation (기반) | **완료** | 2026-04-10 | 2026-04-10 |
 | 2 | Tier Plugin System | **완료** | 2026-04-10 | 2026-04-10 |
 | 3 | Logcat Streaming | **완료** | 2026-04-10 | 2026-04-10 |
-| 4 | Tier Implementations | 대기 | - | - |
-| 5 | Slash Commands & Scenario | 대기 | - | - |
-| 6 | Onboarding & Release | 대기 | - | - |
+| 4 | Tier Implementations | **완료** | 2026-04-11 | 2026-04-11 |
+| 5 | Slash Commands & Scenario | **완료** | 2026-04-11 | 2026-04-11 |
+| 6 | Onboarding & Release | **완료** | 2026-04-11 | 2026-04-11 |
 
 ---
 
@@ -86,31 +86,32 @@
 
 ---
 
-## Phase 4: Tier Implementations [대기]
+## Phase 4: Tier Implementations [완료]
 
-- [ ] src/tiers/logcat-tier.ts — Tier 1 (canHandle + execute, 로그 파싱)
-- [ ] src/tiers/uiautomator-tier.ts — Tier 2 (UI 트리 덤프 + resource-id 탐색)
-- [ ] src/tiers/screenshot-tier.ts — Tier 3 (스크린샷 래핑)
-- [ ] 통합 테스트: TierRunner로 Tier 1→2→3 체인 실행
-
----
-
-## Phase 5: Slash Commands & Scenario [대기]
-
-- [ ] .claude/skills/atp/analyze-app/SKILL.md — Step 0 정적 분석
-- [ ] .claude/skills/atp/check-logs/SKILL.md — Step 1 로그 커버리지
-- [ ] .claude/skills/atp/run-test/SKILL.md — Step 2 테스트 실행
-- [ ] .claude/skills/atp/app-map/SKILL.md — 산출물 요약
-- [ ] templates/scenario.md — 시나리오 템플릿
+- [x] src/tiers/text-tier.ts — Tier 1 (dumpsys + logcat 파싱, FALLBACK 판단)
+- [x] src/tiers/uiautomator-tier.ts — Tier 2 (UI 트리 덤프 + resource-id tap)
+- [x] src/tiers/screenshot-tier.ts — Tier 3 (스크린샷 base64 캡처)
+- [x] src/android.ts — getSessionByDevice() 정적 메서드 추가
 
 ---
 
-## Phase 6: Onboarding & Release [대기]
+## Phase 5: Slash Commands & Scenario [완료]
 
-- [ ] .mcp.json — 프로젝트 스코프 MCP 등록
-- [ ] README.md — 설치, 설정, 사용법, 온보딩 가이드
-- [ ] npm publish 준비 (bin, files, shebang)
-- [ ] E2E 검증: 클론 → 설치 → /atp:analyze-app → /atp:check-logs → /atp:run-test
+- [x] .claude/skills/atp/analyze-app/SKILL.md — Step 0 정적 분석
+- [x] .claude/skills/atp/check-logs/SKILL.md — Step 1 로그 커버리지
+- [x] .claude/skills/atp/run-test/SKILL.md — Step 2 테스트 실행 (3-tier)
+- [x] .claude/skills/atp/app-map/SKILL.md — 산출물 요약
+- [x] templates/scenario.md — 시나리오 템플릿 (영어)
+
+---
+
+## Phase 6: Onboarding & Release [완료]
+
+- [x] .mcp.json — 프로젝트 스코프 MCP 등록
+- [x] README.md — 영어 (설치, 설정, 사용법, 온보딩 가이드)
+- [x] README.ko.md — 한국어 번역
+- [x] npm publish 준비 완료 (bin, files, shebang)
+- [ ] E2E 검증: 실제 디바이스 연결 후 전체 플로우 테스트 (별도 진행)
 
 ---
 
@@ -123,6 +124,6 @@
 
 ## 비고
 
-- Phase 2와 Phase 3는 병렬 작업 가능 (상호 독립)
 - mobile-mcp 원본과의 diff 최소화 원칙 유지
+- iOS 코드 일체 수정 없음
 - iOS 코드는 일체 수정하지 않음

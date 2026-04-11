@@ -15,6 +15,11 @@ import { isScalingAvailable, Image } from "./image-utils";
 import { Mobilecli } from "./mobilecli";
 import { MobileDevice } from "./mobile-device";
 import { validateOutputPath, validateFileExtension } from "./utils";
+import { TierRunner } from "./tiers/tier-runner";
+import { TextTier } from "./tiers/text-tier";
+import { UiAutomatorTier } from "./tiers/uiautomator-tier";
+import { ScreenshotTier } from "./tiers/screenshot-tier";
+import { TierContext, AppMap, ApiScenario, ViewStateScreen } from "./tiers/types";
 
 const ALLOWED_SCREENSHOT_EXTENSIONS = [".png", ".jpg", ".jpeg"];
 const ALLOWED_RECORDING_EXTENSIONS = [".mp4"];
@@ -906,6 +911,86 @@ export const createMcpServer = (): McpServer => {
 				totalLines: stats.totalLines,
 				durationMs: stats.durationMs,
 				message: `Logcat session stopped. Collected ${stats.totalLines} lines over ${Math.round(stats.durationMs / 1000)}s.`,
+			});
+		}
+	);
+
+	// ─── android-test-pilot: Tier-based step execution ─────────────
+
+	const loadAppMap = (): AppMap => {
+		const appMapDir = path.join(process.cwd(), ".claude", "app-map");
+		const empty: AppMap = { navigationMap: "", apiScenarios: [], viewStateMap: [] };
+		try {
+			const navPath = path.join(appMapDir, "navigation_map.mermaid");
+			const apiPath = path.join(appMapDir, "api_scenarios.json");
+			const viewPath = path.join(appMapDir, "view_state_map.json");
+			return {
+				navigationMap: fs.existsSync(navPath) ? fs.readFileSync(navPath, "utf-8") : "",
+				apiScenarios: fs.existsSync(apiPath) ? JSON.parse(fs.readFileSync(apiPath, "utf-8")).apis ?? [] : [],
+				viewStateMap: fs.existsSync(viewPath) ? JSON.parse(fs.readFileSync(viewPath, "utf-8")).screens ?? [] : [],
+			};
+		} catch {
+			return empty;
+		}
+	};
+
+	tool(
+		"atp_run_step",
+		"ATP Run Step",
+		"Execute a single test step using the 3-tier strategy (text → uiautomator → screenshot). Automatically falls back through tiers when a tier cannot determine the result.",
+		{
+			device: z.string().describe("The device identifier to use."),
+			action: z.string().describe("The action to perform (e.g., 'tap login button', 'enter email')"),
+			verification: z.string().describe("What to verify after the action (e.g., 'home screen appears')"),
+			expectedLogcat: z.array(z.object({
+				tag: z.enum(["ATP_SCREEN", "ATP_RENDER", "ATP_API"]).describe("ATP log tag to match"),
+				pattern: z.string().describe("Regex pattern to match against log lines"),
+			})).optional().describe("Expected logcat entries for Tier 1 text-based verification"),
+			tapTarget: z.object({
+				resourceId: z.string().optional().describe("Android resource-id to tap"),
+				x: z.coerce.number().optional().describe("X coordinate to tap"),
+				y: z.coerce.number().optional().describe("Y coordinate to tap"),
+			}).optional().describe("Element to tap during this step"),
+		},
+		{ destructiveHint: true },
+		async ({ device, action, verification, expectedLogcat, tapTarget }) => {
+			// Ensure device is Android
+			const robot = getRobotFromDevice(device);
+			if (!isAndroidRobot(robot)) {
+				throw new ActionableError("atp_run_step is only supported on Android devices");
+			}
+
+			const runner = new TierRunner([
+				new TextTier(),
+				new UiAutomatorTier(),
+				new ScreenshotTier(),
+			]);
+
+			const context: TierContext = {
+				deviceId: device,
+				step: {
+					action,
+					verification,
+					expectedLogcat: expectedLogcat?.map((e: { tag: "ATP_SCREEN" | "ATP_RENDER" | "ATP_API"; pattern: string }) => ({ tag: e.tag, pattern: e.pattern })),
+					tapTarget: tapTarget ? {
+						resourceId: tapTarget.resourceId,
+						coordinates: (tapTarget.x !== undefined && tapTarget.y !== undefined)
+							? { x: tapTarget.x, y: tapTarget.y }
+							: undefined,
+					} : undefined,
+				},
+				appMap: loadAppMap(),
+			};
+
+			const result = await runner.run(context);
+
+			return JSON.stringify({
+				tier: result.tier,
+				status: result.status,
+				observation: result.observation,
+				verification: result.verification,
+				fallbackHint: result.fallbackHint,
+				error: result.error,
 			});
 		}
 	);

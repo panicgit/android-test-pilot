@@ -38,37 +38,44 @@ If any are missing, stop with:
 
 ## Test Execution Strategy
 
-For each test step in the scenario file:
+Before starting, use `atp_logcat_start` to begin logcat streaming for the device.
 
-### Tier 1: Text-based (try first)
-1. Use `atp_logcat_start` to begin logcat streaming (tags: ATP_SCREEN, ATP_RENDER, ATP_API).
-2. Perform the action described in the step (launch app, tap, type, etc.).
-3. Use `atp_dumpsys` to check current Activity and Window.
-4. Use `atp_logcat_read` to check for expected log patterns.
-5. If expected logcat patterns match → step PASSED.
-6. If no ATP logs found → fall through to Tier 2.
+For each test step in the scenario file, use the `atp_run_step` MCP tool:
 
-### Tier 2: uiautomator (when Tier 1 can't determine)
-1. Use `mobile_list_elements_on_screen` to dump the UI hierarchy.
-2. Search for elements by `resource-id` (resolution-independent).
-3. If tap is needed, calculate center coordinates from element bounds.
-4. Use `mobile_click_on_screen_at_coordinates` to tap.
-5. If element found and action succeeded → step PASSED.
-6. If element not found → fall through to Tier 3.
+```
+atp_run_step({
+  device: "<device-id>",
+  action: "<action from scenario step>",
+  verification: "<verification from scenario step>",
+  expectedLogcat: [
+    { tag: "ATP_SCREEN", pattern: "enter: LoginActivity" }
+  ],
+  tapTarget: { resourceId: "btn_login" }
+})
+```
 
-### Tier 3: Screenshot (last resort)
-1. Use `mobile_take_screenshot` to capture the screen.
-2. Analyze the screenshot visually for verification.
-3. Check for unexpected popups, image rendering issues.
-4. Report PASS or FAIL based on visual analysis.
+`atp_run_step` automatically handles the 3-tier fallback:
+1. **Tier 1 (text)**: dumpsys + logcat pattern matching — fast, cheap
+2. **Tier 2 (uiautomator)**: UI hierarchy search + resource-id tap — if Tier 1 can't determine
+3. **Tier 3 (screenshot)**: visual capture — last resort, only if Tier 1+2 both fail
+
+The tool returns a `TierResult` with: tier used, status (SUCCESS/FAIL/FALLBACK/ERROR), observation, and verification details.
+
+### Manual Tier Tools (optional, for debugging)
+
+Individual tier tools are also available for direct use:
+- `atp_dumpsys` — query current Activity or Window
+- `atp_logcat_start/read/stop` — manage logcat sessions
+- `mobile_list_elements_on_screen` — dump UI hierarchy
+- `mobile_take_screenshot` — capture screenshot
 
 ## Logcat Session Lifecycle
 
 ```
 Test start → atp_logcat_start
-  Step 1 → action → atp_logcat_read (since: 0)
-  Step 2 → action → atp_logcat_read (since: lastLine)
-  Step N → action → atp_logcat_read (since: lastLine)
+  Step 1 → atp_run_step (auto tier fallback)
+  Step 2 → atp_run_step (auto tier fallback)
+  Step N → atp_run_step (auto tier fallback)
 Test end → atp_logcat_stop
 ```
 

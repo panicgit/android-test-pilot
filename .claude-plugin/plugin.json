@@ -1,0 +1,13 @@
+{
+  "name": "android-test-pilot",
+  "version": "0.1.0",
+  "description": "Automated Android app testing with 3-tier strategy (text → uiautomator → screenshot) powered by Claude Code",
+  "skills": "./.claude/skills/",
+  "mcp": {
+    "command": "node",
+    "args": ["lib/index.js"],
+    "env": {
+      "MAX_MCP_OUTPUT_TOKENS": "50000"
+    }
+  }
+}

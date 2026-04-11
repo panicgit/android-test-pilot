@@ -1,0 +1,20 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "android-test-pilot",
+  "description": "Android app test automation — static analysis, log coverage, and 3-tier device testing (dumpsys+logcat → uiautomator → screenshot)",
+  "owner": {
+    "name": "panicgit"
+  },
+  "plugins": [
+    {
+      "name": "android-test-pilot",
+      "description": "Automated Android app testing with 3-tier strategy. Cheaper and faster than screenshot-based testing.",
+      "category": "development",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/panicgit/android-test-pilot.git"
+      },
+      "homepage": "https://github.com/panicgit/android-test-pilot"
+    }
+  ]
+}

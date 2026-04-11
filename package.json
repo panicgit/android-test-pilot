@@ -1,5 +1,5 @@
 {
-  "name": "@anthropic/android-test-pilot",
+  "name": "@panicgit/android-test-pilot",
   "version": "0.1.0",
   "description": "Android app test automation tool powered by Claude Code — static analysis, log coverage, and device testing with 3-tier strategy",
   "main": "index.js",

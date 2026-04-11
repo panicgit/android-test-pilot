@@ -687,7 +687,7 @@ export class AndroidRobot implements Robot {
 			throw new ActionableError(`Logcat session "${sessionId}" not found. It may have expired or been stopped.`);
 		}
 
-		const startIndex = since ?? 0;
+		const startIndex = Math.max(0, since ?? 0);
 		const lines = session.buffer.slice(startIndex);
 		return {
 			lines,

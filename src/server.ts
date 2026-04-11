@@ -856,7 +856,7 @@ export const createMcpServer = (): McpServer => {
 		{
 			device: z.string().describe("The device identifier to use."),
 			sessionId: z.string().describe("Session ID returned by atp_logcat_start"),
-			since: z.coerce.number().int().optional()
+			since: z.coerce.number().int().min(0).optional()
 				.describe("Return only lines after this index (for incremental reads). Omit to get all lines."),
 		},
 		{ readOnlyHint: true },
@@ -894,6 +894,11 @@ export const createMcpServer = (): McpServer => {
 			const robot = getRobotFromDevice(device);
 			if (!("stopLogcat" in robot)) {
 				throw new ActionableError("logcat is only supported on Android devices");
+			}
+			// Verify session belongs to this device (matches atp_logcat_read)
+			const session = AndroidRobot.getSession(sessionId);
+			if (session && session.deviceId !== device) {
+				throw new ActionableError(`Logcat session "${sessionId}" belongs to a different device.`);
 			}
 			const androidRobot = robot as AndroidRobot;
 			const stats = androidRobot.stopLogcat(sessionId);

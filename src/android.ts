@@ -717,6 +717,16 @@ export class AndroidRobot implements Robot {
 	public static getSession(sessionId: string): LogcatSession | undefined {
 		return activeSessions.get(sessionId);
 	}
+
+	/** Get an active logcat session by device ID (for TextTier) */
+	public static getSessionByDevice(deviceId: string): LogcatSession | undefined {
+		for (const session of activeSessions.values()) {
+			if (session.deviceId === deviceId) {
+				return session;
+			}
+		}
+		return undefined;
+	}
 }
 
 export class AndroidDeviceManager {

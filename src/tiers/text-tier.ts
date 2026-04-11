@@ -33,9 +33,20 @@ export class TextTier extends AbstractTier {
 		const robot = this.getAndroidRobot(context);
 		const observations: string[] = [];
 
-		// 1. Collect dumpsys info
-		const activityInfo = robot.getDumpsysActivity();
-		const windowInfo = robot.getDumpsysWindow();
+		// 1. Collect dumpsys info (FALLBACK on ADB failure)
+		let activityInfo: string;
+		let windowInfo: string;
+		try {
+			activityInfo = robot.getDumpsysActivity();
+			windowInfo = robot.getDumpsysWindow();
+		} catch (err: unknown) {
+			const message = err instanceof Error ? err.message : String(err);
+			return {
+				tier: this.name,
+				status: "FALLBACK",
+				fallbackHint: `dumpsys failed: ${message}`,
+			};
+		}
 		observations.push(`activity: ${activityInfo}`);
 		observations.push(`window: ${windowInfo}`);
 
@@ -133,6 +144,6 @@ export class TextTier extends AbstractTier {
 	}
 
 	private findSessionForDevice(deviceId: string) {
-		return AndroidRobot.getSessionByDevice(deviceId) ?? null;
+		return AndroidRobot.getSessionByDevice(deviceId);
 	}
 }

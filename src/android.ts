@@ -722,14 +722,17 @@ export class AndroidRobot implements Robot {
 		return activeSessions.get(sessionId);
 	}
 
-	/** Get an active logcat session by device ID (for TextTier) */
+	/** Get the most recent active logcat session for a device (for TextTier) */
 	public static getSessionByDevice(deviceId: string): LogcatSession | undefined {
+		let latest: LogcatSession | undefined;
 		for (const session of activeSessions.values()) {
 			if (session.deviceId === deviceId) {
-				return session;
+				if (!latest || session.startTime > latest.startTime) {
+					latest = session;
+				}
 			}
 		}
-		return undefined;
+		return latest;
 	}
 }
 

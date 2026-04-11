@@ -17,9 +17,15 @@ export class ScreenshotTier extends AbstractTier {
 	readonly name = "screenshot";
 	readonly priority = 3;
 
-	async canHandle(_context: TierContext): Promise<boolean> {
-		// Screenshot is always available as last resort
-		return true;
+	async canHandle(context: TierContext): Promise<boolean> {
+		// Verify device is reachable before attempting screenshot
+		try {
+			const robot = this.getAndroidRobot(context);
+			robot.adb("shell", "echo", "ping");
+			return true;
+		} catch {
+			return false;
+		}
 	}
 
 	async execute(context: TierContext): Promise<TierResult> {

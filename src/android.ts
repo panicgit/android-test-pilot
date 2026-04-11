@@ -572,8 +572,9 @@ export class AndroidRobot implements Robot {
 				focused: focusedLine?.trim() || null,
 				topResumed: topLine?.trim() || null,
 			});
-		} catch (err: any) {
-			return JSON.stringify({ error: err.message });
+		} catch (err: unknown) {
+			const message = err instanceof Error ? err.message : String(err);
+			return JSON.stringify({ error: message });
 		}
 	}
 
@@ -591,8 +592,9 @@ export class AndroidRobot implements Robot {
 				currentFocus: focusedLine?.trim() || null,
 				inputMethodTarget: inputLine?.trim() || null,
 			});
-		} catch (err: any) {
-			return JSON.stringify({ error: err.message });
+		} catch (err: unknown) {
+			const message = err instanceof Error ? err.message : String(err);
+			return JSON.stringify({ error: message });
 		}
 	}
 

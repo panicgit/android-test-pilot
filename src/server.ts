@@ -160,6 +160,10 @@ export const createMcpServer = (): McpServer => {
 		}
 	};
 
+	const isAndroidRobot = (robot: Robot): robot is AndroidRobot => {
+		return robot instanceof AndroidRobot;
+	};
+
 	const getRobotFromDevice = (deviceId: string): Robot => {
 
 		// from now on, we must have mobilecli working
@@ -809,14 +813,13 @@ export const createMcpServer = (): McpServer => {
 		{ readOnlyHint: true },
 		async ({ device, type }) => {
 			const robot = getRobotFromDevice(device);
-			if (!("getDumpsysActivity" in robot)) {
+			if (!isAndroidRobot(robot)) {
 				throw new ActionableError("dumpsys is only supported on Android devices");
 			}
-			const androidRobot = robot as AndroidRobot;
 			if (type === "activity") {
-				return androidRobot.getDumpsysActivity();
+				return robot.getDumpsysActivity();
 			} else {
-				return androidRobot.getDumpsysWindow();
+				return robot.getDumpsysWindow();
 			}
 		}
 	);
@@ -835,11 +838,10 @@ export const createMcpServer = (): McpServer => {
 		{ readOnlyHint: true },
 		async ({ device, tags, durationSeconds }) => {
 			const robot = getRobotFromDevice(device);
-			if (!("startLogcat" in robot)) {
+			if (!isAndroidRobot(robot)) {
 				throw new ActionableError("logcat is only supported on Android devices");
 			}
-			const androidRobot = robot as AndroidRobot;
-			const session = androidRobot.startLogcat(tags, durationSeconds);
+			const session = robot.startLogcat(tags, durationSeconds);
 			return JSON.stringify({
 				sessionId: session.id,
 				tags: session.tags,
@@ -862,7 +864,7 @@ export const createMcpServer = (): McpServer => {
 		{ readOnlyHint: true },
 		async ({ device, sessionId, since }) => {
 			const robot = getRobotFromDevice(device);
-			if (!("readLogcat" in robot)) {
+			if (!isAndroidRobot(robot)) {
 				throw new ActionableError("logcat is only supported on Android devices");
 			}
 			// Verify session belongs to this device
@@ -870,8 +872,7 @@ export const createMcpServer = (): McpServer => {
 			if (session && session.deviceId !== device) {
 				throw new ActionableError(`Logcat session "${sessionId}" belongs to a different device.`);
 			}
-			const androidRobot = robot as AndroidRobot;
-			const result = androidRobot.readLogcat(sessionId, since);
+			const result = robot.readLogcat(sessionId, since);
 			return JSON.stringify({
 				lines: result.lines,
 				lineCount: result.lineCount,
@@ -892,7 +893,7 @@ export const createMcpServer = (): McpServer => {
 		{ destructiveHint: true },
 		async ({ device, sessionId }) => {
 			const robot = getRobotFromDevice(device);
-			if (!("stopLogcat" in robot)) {
+			if (!isAndroidRobot(robot)) {
 				throw new ActionableError("logcat is only supported on Android devices");
 			}
 			// Verify session belongs to this device (matches atp_logcat_read)
@@ -900,8 +901,7 @@ export const createMcpServer = (): McpServer => {
 			if (session && session.deviceId !== device) {
 				throw new ActionableError(`Logcat session "${sessionId}" belongs to a different device.`);
 			}
-			const androidRobot = robot as AndroidRobot;
-			const stats = androidRobot.stopLogcat(sessionId);
+			const stats = robot.stopLogcat(sessionId);
 			return JSON.stringify({
 				totalLines: stats.totalLines,
 				durationMs: stats.durationMs,

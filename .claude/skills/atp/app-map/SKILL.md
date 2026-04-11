@@ -1,0 +1,36 @@
+---
+name: app-map
+description: "View Step 0 static analysis results summary"
+user-invocable: true
+allowed-tools: Read Glob
+---
+
+# App Map Summary
+
+Read and summarize the Step 0 analysis artifacts in `.claude/app-map/`.
+
+## Check for artifacts
+
+```!
+ls -la .claude/app-map/ 2>/dev/null || echo "NO_ARTIFACTS"
+```
+
+If no artifacts found:
+> No analysis results yet. Run `/atp:analyze-app` to generate them.
+
+If artifacts exist, read each file and summarize:
+
+### Navigation Map
+- Total screen count
+- Key entry points
+- Screen transition relationships
+
+### API Scenarios
+- Total API count
+- Endpoint list
+- Success/error branch coverage
+
+### View State Map
+- Total screen count
+- Number of Views with dynamic state
+- Data source types (LiveData, StateFlow, DataBinding)

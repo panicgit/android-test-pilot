@@ -21,7 +21,7 @@ export class ScreenshotTier extends AbstractTier {
 		// Verify device is reachable before attempting screenshot
 		try {
 			const robot = this.getAndroidRobot(context);
-			robot.adb("shell", "echo", "ping");
+			void robot.adb("shell", "echo", "ping");
 			return true;
 		} catch {
 			return false;

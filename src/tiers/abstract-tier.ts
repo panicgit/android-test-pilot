@@ -19,7 +19,12 @@ export abstract class AbstractTier {
 	/** Execution priority — lower values run first (e.g. 1, 2, 3) */
 	abstract readonly priority: number;
 
-	/** Cached AndroidRobot instance */
+	/**
+	 * Cached AndroidRobot instance.
+	 * Note: Single-threaded assumption — not safe for concurrent multi-device
+	 * runs on the same AbstractTier instance. Each TierRunner.run() should use
+	 * its own tier instances or target a single device.
+	 */
 	private _robot: AndroidRobot | null = null;
 
 	/**

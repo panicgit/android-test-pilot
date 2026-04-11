@@ -18,7 +18,7 @@ export class UiAutomatorTier extends AbstractTier {
 		try {
 			const robot = this.getAndroidRobot(context);
 			// Verify uiautomator is responsive
-			robot.adb("shell", "echo", "ping");
+			void robot.adb("shell", "echo", "ping");
 			return true;
 		} catch {
 			return false;

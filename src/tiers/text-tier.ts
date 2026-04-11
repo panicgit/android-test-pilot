@@ -22,7 +22,7 @@ export class TextTier extends AbstractTier {
 		try {
 			const robot = this.getAndroidRobot(context);
 			// Verify device is reachable by running a lightweight ADB command
-			robot.adb("shell", "echo", "ping");
+			void robot.adb("shell", "echo", "ping");
 			return true;
 		} catch {
 			return false;
@@ -100,7 +100,6 @@ export class TextTier extends AbstractTier {
 		}
 
 		const allMatched = matchResults.every(r => r.matched);
-		const noneMatched = matchResults.every(r => !r.matched);
 
 		observations.push(`logcat matches: ${matchResults.filter(r => r.matched).length}/${matchResults.length}`);
 
@@ -118,7 +117,7 @@ export class TextTier extends AbstractTier {
 			};
 		}
 
-		if (noneMatched && logLines.length === 0) {
+		if (logLines.length === 0) {
 			// No logs at all — FALLBACK to next tier
 			return {
 				tier: this.name,

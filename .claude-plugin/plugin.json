@@ -1,8 +1,8 @@
 {
-  "name": "android-test-pilot",
+  "name": "atp",
   "version": "0.1.0",
   "description": "Automated Android app testing with 3-tier strategy (text → uiautomator → screenshot) powered by Claude Code",
-  "skills": "./.claude/skills/",
+  "skills": "./skills/",
   "mcp": {
     "command": "node",
     "args": ["lib/index.js"],

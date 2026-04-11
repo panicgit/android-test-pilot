@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "android-test-pilot": {
+      "command": "node",
+      "args": ["lib/index.js"],
+      "env": {
+        "MAX_MCP_OUTPUT_TOKENS": "50000"
+      }
+    }
+  }
+}

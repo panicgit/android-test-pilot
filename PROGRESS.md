@@ -119,7 +119,7 @@
 
 | 문서 | 경로 |
 |------|------|
-| 설계 요청서 | `design-request-for-opus.md` |
+| 설계 요청서 | `docs/internal/design-request.md` |
 | 아키텍처 설계서 | `.claude/PRPs/plans/android-test-pilot-architecture.plan.md` |
 
 ## 비고

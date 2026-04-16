@@ -11,9 +11,27 @@ const startSseServer = async (host: string, port: number) => {
 	const server = createMcpServer();
 
 	const authToken = process.env.MOBILEMCP_AUTH;
-	if (!authToken) {
-		error("WARNING: SSE server running without authentication. Set MOBILEMCP_AUTH env var to enable bearer token auth.");
+	const allowInsecure = process.env.MOBILEMCP_ALLOW_INSECURE_LISTEN === "1";
+
+	if (!authToken && !allowInsecure) {
+		console.error(`
+[FATAL] SSE server requires authentication. Set MOBILEMCP_AUTH:
+
+  export MOBILEMCP_AUTH=$(openssl rand -hex 32)
+
+Or, only for trusted local development, override:
+
+  export MOBILEMCP_ALLOW_INSECURE_LISTEN=1
+
+Refusing to start. See SECURITY in IMPROVEMENT_PLAN.md (S3).
+`);
+		process.exit(1);
 	}
+
+	if (!authToken && allowInsecure) {
+		error("WARNING: SSE server running WITHOUT authentication (MOBILEMCP_ALLOW_INSECURE_LISTEN=1). Anyone reachable on the bound interface can invoke any tool.");
+	}
+
 	if (authToken) {
 		app.use((req, res, next) => {
 			if (req.headers.authorization !== `Bearer ${authToken}`) {

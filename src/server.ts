@@ -19,7 +19,8 @@ import { TierRunner } from "./tiers/tier-runner";
 import { TextTier } from "./tiers/text-tier";
 import { UiAutomatorTier } from "./tiers/uiautomator-tier";
 import { ScreenshotTier } from "./tiers/screenshot-tier";
-import { TierContext, AppMap, ApiScenario, ViewStateScreen } from "./tiers/types";
+import { TierContext } from "./tiers/types";
+import { loadAppMap } from "./app-map";
 
 const ALLOWED_SCREENSHOT_EXTENSIONS = [".png", ".jpg", ".jpeg"];
 const ALLOWED_RECORDING_EXTENSIONS = [".mp4"];
@@ -918,23 +919,6 @@ export const createMcpServer = (): McpServer => {
 
 	// ─── android-test-pilot: Tier-based step execution ─────────────
 
-	const loadAppMap = (): AppMap => {
-		const appMapDir = path.join(process.cwd(), ".claude", "app-map");
-		const empty: AppMap = { navigationMap: "", apiScenarios: [], viewStateMap: [] };
-		try {
-			const navPath = path.join(appMapDir, "navigation_map.mermaid");
-			const apiPath = path.join(appMapDir, "api_scenarios.json");
-			const viewPath = path.join(appMapDir, "view_state_map.json");
-			return {
-				navigationMap: fs.existsSync(navPath) ? fs.readFileSync(navPath, "utf-8") : "",
-				apiScenarios: fs.existsSync(apiPath) ? JSON.parse(fs.readFileSync(apiPath, "utf-8")).apis ?? [] : [],
-				viewStateMap: fs.existsSync(viewPath) ? JSON.parse(fs.readFileSync(viewPath, "utf-8")).screens ?? [] : [],
-			};
-		} catch {
-			return empty;
-		}
-	};
-
 	tool(
 		"atp_run_step",
 		"ATP Run Step",
@@ -979,6 +963,8 @@ export const createMcpServer = (): McpServer => {
 				new ScreenshotTier(),
 			]);
 
+			const { appMap, warnings: appMapWarnings } = loadAppMap();
+
 			const context: TierContext = {
 				deviceId: device,
 				step: {
@@ -993,7 +979,7 @@ export const createMcpServer = (): McpServer => {
 					} : undefined,
 					skipVerification,
 				},
-				appMap: loadAppMap(),
+				appMap,
 			};
 
 			const result = await runner.run(context);
@@ -1005,6 +991,7 @@ export const createMcpServer = (): McpServer => {
 				verification: result.verification,
 				fallbackHint: result.fallbackHint,
 				error: result.error,
+				appMapWarnings: appMapWarnings.length > 0 ? appMapWarnings : undefined,
 			});
 		}
 	);

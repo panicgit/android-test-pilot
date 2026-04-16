@@ -962,6 +962,17 @@ export const createMcpServer = (): McpServer => {
 				throw new ActionableError("atp_run_step is only supported on Android devices");
 			}
 
+			// Auto-start a logcat session if expectedLogcat is provided and none
+			// is live. Removes the "model forgot atp_logcat_start" foot-gun (C8).
+			if (expectedLogcat && expectedLogcat.length > 0) {
+				try {
+					robot.ensureLogcatSession();
+				} catch (err: unknown) {
+					const message = err instanceof Error ? err.message : String(err);
+					trace(`atp_run_step: ensureLogcatSession warning: ${message}`);
+				}
+			}
+
 			const runner = new TierRunner([
 				new TextTier(),
 				new UiAutomatorTier(),

@@ -719,6 +719,26 @@ export class AndroidRobot implements Robot {
 		};
 	}
 
+	/**
+	 * Idempotent session bootstrap — return the existing live session for this
+	 * device if one exists and has time left, otherwise start a new one with the
+	 * default ATP_* tags. Used by atp_run_step to remove the "must remember to
+	 * call atp_logcat_start first" foot-gun. See C8 in IMPROVEMENT_PLAN.md.
+	 */
+	public ensureLogcatSession(
+		tags: string[] = ["ATP_SCREEN", "ATP_RENDER", "ATP_API"],
+		durationSeconds = 300,
+	): LogcatSession {
+		const existing = AndroidRobot.getSessionByDevice(this.deviceId);
+		if (existing) {
+			const elapsed = Date.now() - existing.startTime;
+			if (elapsed < existing.maxDuration) {
+				return existing;
+			}
+		}
+		return this.startLogcat(tags, durationSeconds);
+	}
+
 	/** Get an active logcat session by ID (for server.ts to check existence) */
 	public static getSession(sessionId: string): LogcatSession | undefined {
 		return activeSessions.get(sessionId);

@@ -1,0 +1,61 @@
+{
+  "version": "0.1.0",
+  "timestamp": "2026-04-16T15:59:38.035Z",
+  "scenarios": [
+    {
+      "name": "login",
+      "totalSteps": 5,
+      "tierBreakdown": {
+        "text": 5
+      },
+      "tier1Ratio": 1,
+      "tier2Ratio": 0,
+      "tier3Ratio": 0,
+      "avgStepLatencyMs": 0,
+      "failedSteps": 0,
+      "stepResults": [
+        {
+          "stepIndex": 0,
+          "action": "launch app",
+          "tier": "text",
+          "status": "SUCCESS",
+          "durationMs": 1
+        },
+        {
+          "stepIndex": 1,
+          "action": "enter email",
+          "tier": "text",
+          "status": "SUCCESS",
+          "durationMs": 0
+        },
+        {
+          "stepIndex": 2,
+          "action": "enter password",
+          "tier": "text",
+          "status": "SUCCESS",
+          "durationMs": 0
+        },
+        {
+          "stepIndex": 3,
+          "action": "tap login button",
+          "tier": "text",
+          "status": "SUCCESS",
+          "durationMs": 0
+        },
+        {
+          "stepIndex": 4,
+          "action": "wait for home screen",
+          "tier": "text",
+          "status": "SUCCESS",
+          "durationMs": 0
+        }
+      ]
+    }
+  ],
+  "totals": {
+    "tier1Ratio": 1,
+    "tier2Ratio": 0,
+    "tier3Ratio": 0,
+    "avgLatencyMs": 0
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "name": "login",
+  "description": "Standard login flow — launch, enter credentials, tap login, verify home",
+  "steps": [
+    {
+      "action": "launch app",
+      "verification": "LoginActivity foreground",
+      "expectedLogcat": [
+        { "tag": "ATP_SCREEN", "pattern": "enter: LoginActivity" }
+      ],
+      "mockLogcatLines": [
+        "04-17 12:00:00.000 D/ATP_SCREEN(1234): enter: LoginActivity"
+      ],
+      "mockDumpsysActivity": "{\"resumed\":\"mResumedActivity: ActivityRecord{... LoginActivity}\",\"focused\":null,\"topResumed\":null}"
+    },
+    {
+      "action": "enter email",
+      "verification": "email field accepts input",
+      "tapTarget": { "resourceId": "et_email" },
+      "expectedLogcat": [
+        { "tag": "ATP_RENDER", "pattern": "renderState: screen=Login, emailFilled=true" }
+      ],
+      "mockLogcatLines": [
+        "04-17 12:00:01.000 D/ATP_RENDER(1234): renderState: screen=Login, emailFilled=true, btnEnabled=false"
+      ]
+    },
+    {
+      "action": "enter password",
+      "verification": "login button enabled",
+      "tapTarget": { "resourceId": "et_password" },
+      "expectedLogcat": [
+        { "tag": "ATP_RENDER", "pattern": "btnEnabled=true" }
+      ],
+      "mockLogcatLines": [
+        "04-17 12:00:02.000 D/ATP_RENDER(1234): renderState: screen=Login, emailFilled=true, btnEnabled=true"
+      ]
+    },
+    {
+      "action": "tap login button",
+      "verification": "auth API returns 200",
+      "tapTarget": { "resourceId": "btn_login" },
+      "expectedLogcat": [
+        { "tag": "ATP_API", "pattern": "apiResponse: endpoint=POST /auth, status=200" }
+      ],
+      "mockLogcatLines": [
+        "04-17 12:00:03.000 D/ATP_API(1234): apiResponse: endpoint=POST /auth, status=200, bodyLength=143"
+      ]
+    },
+    {
+      "action": "wait for home screen",
+      "verification": "HomeActivity foreground",
+      "expectedLogcat": [
+        { "tag": "ATP_SCREEN", "pattern": "enter: HomeActivity" }
+      ],
+      "mockLogcatLines": [
+        "04-17 12:00:04.000 D/ATP_SCREEN(1234): enter: HomeActivity"
+      ],
+      "mockDumpsysActivity": "{\"resumed\":\"mResumedActivity: ActivityRecord{... HomeActivity}\",\"focused\":null,\"topResumed\":null}"
+    }
+  ]
+}

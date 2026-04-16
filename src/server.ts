@@ -912,7 +912,9 @@ export const createMcpServer = (): McpServer => {
 			return JSON.stringify({
 				totalLines: stats.totalLines,
 				durationMs: stats.durationMs,
-				message: `Logcat session stopped. Collected ${stats.totalLines} lines over ${Math.round(stats.durationMs / 1000)}s.`,
+				bufferBytes: stats.bufferBytes,
+				bytesDropped: stats.bytesDropped,
+				message: `Logcat session stopped. Collected ${stats.totalLines} lines (${stats.bufferBytes} bytes${stats.bytesDropped > 0 ? `, dropped ${stats.bytesDropped} bytes due to caps` : ""}) over ${Math.round(stats.durationMs / 1000)}s.`,
 			});
 		}
 	);
@@ -929,7 +931,10 @@ export const createMcpServer = (): McpServer => {
 			verification: z.string().describe("What to verify after the action (e.g., 'home screen appears')"),
 			expectedLogcat: z.array(z.object({
 				tag: z.enum(["ATP_SCREEN", "ATP_RENDER", "ATP_API"]).describe("ATP log tag to match"),
-				pattern: z.string().describe("Regex pattern to match against log lines"),
+				pattern: z.string().min(1).max(200).refine(
+					(p) => { try { new RegExp(p); return true; } catch { return false; } },
+					{ message: "Invalid regex pattern (max 200 chars; must compile)" },
+				).describe("Regex pattern to match against log lines (max 200 chars)"),
 			})).optional().describe("Expected logcat entries for Tier 1 text-based verification"),
 			tapTarget: z.object({
 				resourceId: z.string().optional().describe("Android resource-id to tap"),

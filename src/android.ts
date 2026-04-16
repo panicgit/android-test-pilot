@@ -16,10 +16,12 @@ export interface LogcatSession {
 	deviceId: string;
 	process: ChildProcess;
 	buffer: string[];
+	bufferBytes: number;
 	startTime: number;
 	maxDuration: number;
 	tags: string[];
 	timer: NodeJS.Timeout;
+	bytesDropped: number;
 }
 
 /** Global store for active logcat sessions across all devices */
@@ -27,6 +29,15 @@ const activeSessions = new Map<string, LogcatSession>();
 
 /** Max lines to keep in a logcat session buffer to prevent memory exhaustion */
 const MAX_LOGCAT_LINES = 50_000;
+
+/** Max bytes per session buffer — defense against very long log lines (H2). */
+const MAX_LOGCAT_BYTES = 64 * 1024 * 1024;
+
+/** Max concurrent logcat sessions for a single device (S2 + H8). */
+const MAX_SESSIONS_PER_DEVICE = 3;
+
+/** Global cap on logcat sessions across all devices (S2). */
+const MAX_GLOBAL_SESSIONS = 50;
 
 /** Clean up all active logcat sessions (called on process exit) */
 const cleanupAllSessions = () => {
@@ -605,6 +616,19 @@ export class AndroidRobot implements Robot {
 	 * Spawns `adb logcat` as a background process and buffers output.
 	 */
 	public startLogcat(tags: string[], durationSeconds: number): LogcatSession {
+		// Cap concurrent sessions to prevent memory/fd exhaustion (S2 + H8).
+		const perDevice = [...activeSessions.values()].filter(s => s.deviceId === this.deviceId).length;
+		if (perDevice >= MAX_SESSIONS_PER_DEVICE) {
+			throw new ActionableError(
+				`Device "${this.deviceId}" already has ${MAX_SESSIONS_PER_DEVICE} active logcat sessions. Stop one with atp_logcat_stop before starting another.`,
+			);
+		}
+		if (activeSessions.size >= MAX_GLOBAL_SESSIONS) {
+			throw new ActionableError(
+				`Global logcat session cap (${MAX_GLOBAL_SESSIONS}) reached. Stop existing sessions before starting new ones.`,
+			);
+		}
+
 		const sessionId = crypto.randomUUID();
 
 		// Validate tags to prevent filter manipulation (e.g. "*" would capture all logs)
@@ -632,33 +656,40 @@ export class AndroidRobot implements Robot {
 			deviceId: this.deviceId,
 			process: proc,
 			buffer: [],
+			bufferBytes: 0,
 			startTime: Date.now(),
 			maxDuration: durationSeconds * 1000,
 			tags,
+			bytesDropped: 0,
 			timer: setTimeout(() => {
 				trace(`Logcat session ${sessionId} auto-stopped (timeout ${durationSeconds}s)`);
 				this.stopLogcat(sessionId);
 			}, durationSeconds * 1000),
 		};
 
-		// Buffer stdout line by line (capped at MAX_LOGCAT_LINES)
+		const pushLine = (line: string): void => {
+			if (!line.trim()) return;
+			const lineBytes = Buffer.byteLength(line, "utf8");
+			if (session.buffer.length >= MAX_LOGCAT_LINES || session.bufferBytes + lineBytes > MAX_LOGCAT_BYTES) {
+				session.bytesDropped += lineBytes;
+				return;
+			}
+			session.buffer.push(line);
+			session.bufferBytes += lineBytes;
+		};
+
+		// Buffer stdout line by line (capped at MAX_LOGCAT_LINES + MAX_LOGCAT_BYTES)
 		let partial = "";
 		proc.stdout?.on("data", (chunk: Buffer) => {
 			partial += chunk.toString();
 			const lines = partial.split("\n");
 			partial = lines.pop() || "";
-			for (const line of lines) {
-				if (line.trim() && session.buffer.length < MAX_LOGCAT_LINES) {
-					session.buffer.push(line);
-				}
-			}
+			for (const line of lines) pushLine(line);
 		});
 
 		// Flush remaining partial line on stream end
 		proc.stdout?.on("end", () => {
-			if (partial.trim() && session.buffer.length < MAX_LOGCAT_LINES) {
-				session.buffer.push(partial);
-			}
+			if (partial.trim()) pushLine(partial);
 		});
 
 		// Log stderr for debugging (ADB errors, device disconnects)
@@ -700,7 +731,7 @@ export class AndroidRobot implements Robot {
 	/**
 	 * Stop a logcat streaming session and return stats.
 	 */
-	public stopLogcat(sessionId: string): { totalLines: number; durationMs: number } {
+	public stopLogcat(sessionId: string): { totalLines: number; durationMs: number; bufferBytes: number; bytesDropped: number } {
 		const session = activeSessions.get(sessionId);
 		if (!session) {
 			throw new ActionableError(`Logcat session "${sessionId}" not found.`);
@@ -711,11 +742,13 @@ export class AndroidRobot implements Robot {
 		activeSessions.delete(sessionId);
 
 		const durationMs = Date.now() - session.startTime;
-		trace(`Logcat session ${sessionId} stopped: ${session.buffer.length} lines, ${durationMs}ms`);
+		trace(`Logcat session ${sessionId} stopped: ${session.buffer.length} lines, ${session.bufferBytes}B (dropped ${session.bytesDropped}B), ${durationMs}ms`);
 
 		return {
 			totalLines: session.buffer.length,
 			durationMs,
+			bufferBytes: session.bufferBytes,
+			bytesDropped: session.bytesDropped,
 		};
 	}
 

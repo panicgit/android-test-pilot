@@ -53,10 +53,21 @@ export class TextTier extends AbstractTier {
 		// 2. Check logcat expectations if defined
 		const expectedLogcat = context.step.expectedLogcat;
 		if (!expectedLogcat || expectedLogcat.length === 0) {
-			// No logcat expectations — return dumpsys observations only
+			// No logcat expectations — TextTier cannot verify and cannot tap. Fall
+			// back so a downstream tier can actually act/verify. Opt out with
+			// step.skipVerification = true to accept dumpsys-only success.
+			if (context.step.skipVerification) {
+				return {
+					tier: this.name,
+					status: "SUCCESS",
+					observation: observations.join("\n") + " (skipVerification=true; dumpsys-only)",
+					rawData: JSON.stringify({ activityInfo, windowInfo }),
+				};
+			}
 			return {
 				tier: this.name,
-				status: "SUCCESS",
+				status: "FALLBACK",
+				fallbackHint: "No expectedLogcat assertions; TextTier cannot verify or act. Set step.skipVerification=true to accept dumpsys-only.",
 				observation: observations.join("\n"),
 				rawData: JSON.stringify({ activityInfo, windowInfo }),
 			};

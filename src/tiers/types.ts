@@ -58,6 +58,12 @@ export interface TestStep {
 	expectedLogcat?: ExpectedLogcat[];
 	tapTarget?: TapTarget;
 	verification: string;
+	/**
+	 * If true, TextTier accepts the step on dumpsys alone when expectedLogcat is
+	 * absent. Default false — TextTier falls back to UiAutomatorTier so the action
+	 * (e.g. tap) can actually be performed and verified. See C2 (no-op SUCCESS).
+	 */
+	skipVerification?: boolean;
 }
 
 /** Step 0 artifacts loaded from .claude/app-map/ */

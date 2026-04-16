@@ -952,9 +952,10 @@ export const createMcpServer = (): McpServer => {
 				x: z.coerce.number().optional().describe("X coordinate to tap"),
 				y: z.coerce.number().optional().describe("Y coordinate to tap"),
 			}).optional().describe("Element to tap during this step"),
+			skipVerification: z.boolean().optional().describe("Accept dumpsys-only success when no expectedLogcat is provided. Default false (FALLBACK to next tier)."),
 		},
 		{ destructiveHint: true },
-		async ({ device, action, verification, expectedLogcat, tapTarget }) => {
+		async ({ device, action, verification, expectedLogcat, tapTarget, skipVerification }) => {
 			// Ensure device is Android
 			const robot = getRobotFromDevice(device);
 			if (!isAndroidRobot(robot)) {
@@ -979,6 +980,7 @@ export const createMcpServer = (): McpServer => {
 							? { x: tapTarget.x, y: tapTarget.y }
 							: undefined,
 					} : undefined,
+					skipVerification,
 				},
 				appMap: loadAppMap(),
 			};

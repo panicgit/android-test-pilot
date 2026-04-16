@@ -1,0 +1,12 @@
+android-test-pilot
+Copyright 2026 panicgit
+
+This product includes software developed by:
+
+mobile-mcp (https://github.com/mobile-next/mobile-mcp)
+Copyright 2024 mobile-next contributors
+Licensed under the Apache License, Version 2.0
+
+The Android-specific text-tier (dumpsys + logcat session manager) and
+3-tier strategy (TextTier / UiAutomatorTier / ScreenshotTier) are original
+contributions added on top of the mobile-mcp fork.

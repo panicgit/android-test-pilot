@@ -134,31 +134,43 @@ const isDarwin = (): boolean => {
 	return os.platform() === "darwin";
 };
 
+// Memoized probes (P7) — scaling tools don't appear/disappear during a
+// server lifetime, so spawning sips/magick once per screenshot is waste.
+let _sipsProbe: boolean | null = null;
+let _magickProbe: boolean | null = null;
+let _scalingProbe: boolean | null = null;
+
 export const isSipsInstalled = (): boolean => {
+	if (_sipsProbe !== null) return _sipsProbe;
 	if (!isDarwin()) {
+		_sipsProbe = false;
 		return false;
 	}
-
 	try {
 		execFileSync("/usr/bin/sips", ["--version"]);
-		return true;
-	} catch (error) {
-		return false;
+		_sipsProbe = true;
+	} catch {
+		_sipsProbe = false;
 	}
+	return _sipsProbe;
 };
 
 export const isImageMagickInstalled = (): boolean => {
+	if (_magickProbe !== null) return _magickProbe;
 	try {
-		return execFileSync("magick", ["--version"])
+		_magickProbe = execFileSync("magick", ["--version"])
 			.toString()
 			.split("\n")
 			.filter(line => line.includes("Version: ImageMagick"))
 			.length > 0;
-	} catch (error) {
-		return false;
+	} catch {
+		_magickProbe = false;
 	}
+	return _magickProbe;
 };
 
 export const isScalingAvailable = (): boolean => {
-	return isImageMagickInstalled() || isSipsInstalled();
+	if (_scalingProbe !== null) return _scalingProbe;
+	_scalingProbe = isImageMagickInstalled() || isSipsInstalled();
+	return _scalingProbe;
 };

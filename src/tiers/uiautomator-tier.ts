@@ -15,10 +15,10 @@ export class UiAutomatorTier extends AbstractTier {
 	readonly priority = 2;
 
 	async canHandle(context: TierContext): Promise<boolean> {
+		// Defer reachability to execute() — getElementsOnScreen will throw if
+		// the device is unreachable and the tier will FALLBACK (P1).
 		try {
-			const robot = this.getAndroidRobot(context);
-			// Verify uiautomator is responsive
-			void robot.adb("shell", "echo", "ping");
+			this.getAndroidRobot(context);
 			return true;
 		} catch {
 			return false;

@@ -19,10 +19,11 @@ export class TextTier extends AbstractTier {
 	readonly priority = 1;
 
 	async canHandle(context: TierContext): Promise<boolean> {
+		// Defer reachability to execute() — getDumpsysActivity will throw fast
+		// on an unreachable device and the tier will FALLBACK. Skipping a
+		// dedicated ADB ping saves one round-trip per step (P1).
 		try {
-			const robot = this.getAndroidRobot(context);
-			// Verify device is reachable by running a lightweight ADB command
-			void robot.adb("shell", "echo", "ping");
+			this.getAndroidRobot(context);
 			return true;
 		} catch {
 			return false;
@@ -86,25 +87,29 @@ export class TextTier extends AbstractTier {
 			};
 		}
 
-		// 4. Parse logcat buffer for expected patterns
+		// 4. Parse logcat buffer for expected patterns.
+		// Pre-compile all regexes up front so we pay O(1) construction cost per
+		// pattern regardless of how many log lines we scan (P9).
 		const logLines = session.buffer;
-		const matchResults: Array<{ tag: string; pattern: string; matched: boolean; line?: string }> = [];
-
-		for (const expected of expectedLogcat) {
-			let regex: RegExp;
+		const compiled: Array<{ tag: string; pattern: string; regex: RegExp | null }> = expectedLogcat.map(e => {
 			try {
-				regex = new RegExp(expected.pattern);
+				return { tag: e.tag, pattern: e.pattern, regex: new RegExp(e.pattern) };
 			} catch {
-				// Invalid regex pattern — treat as unmatched
-				matchResults.push({ tag: expected.tag, pattern: expected.pattern, matched: false });
+				return { tag: e.tag, pattern: e.pattern, regex: null };
+			}
+		});
+
+		const matchResults: Array<{ tag: string; pattern: string; matched: boolean; line?: string }> = [];
+		for (const c of compiled) {
+			if (c.regex === null) {
+				matchResults.push({ tag: c.tag, pattern: c.pattern, matched: false });
 				continue;
 			}
-			const matchingLine = logLines.find(line =>
-				line.includes(expected.tag) && regex.test(line)
-			);
+			const regex = c.regex;
+			const matchingLine = logLines.find(line => line.includes(c.tag) && regex.test(line));
 			matchResults.push({
-				tag: expected.tag,
-				pattern: expected.pattern,
+				tag: c.tag,
+				pattern: c.pattern,
 				matched: !!matchingLine,
 				line: matchingLine,
 			});

@@ -19,7 +19,7 @@ import { TierRunner } from "./tiers/tier-runner";
 import { TextTier } from "./tiers/text-tier";
 import { UiAutomatorTier } from "./tiers/uiautomator-tier";
 import { ScreenshotTier } from "./tiers/screenshot-tier";
-import { TierContext } from "./tiers/types";
+import { TierContext, flattenTierResult } from "./tiers/types";
 import { loadAppMap } from "./app-map";
 
 const ALLOWED_SCREENSHOT_EXTENSIONS = [".png", ".jpg", ".jpeg"];
@@ -994,12 +994,7 @@ export const createMcpServer = (): McpServer => {
 			const result = await runner.run(context);
 
 			return JSON.stringify({
-				tier: result.tier,
-				status: result.status,
-				observation: result.observation,
-				verification: result.verification,
-				fallbackHint: result.fallbackHint,
-				error: result.error,
+				...flattenTierResult(result),
 				appMapWarnings: appMapWarnings.length > 0 ? appMapWarnings : undefined,
 			});
 		}

@@ -101,20 +101,49 @@ export interface TierVerification {
 	actual: string;
 }
 
-/** Result returned by a Tier's execute() method */
-export interface TierResult {
-	/** Name of the Tier that produced this result */
+/**
+ * Result returned by a Tier's execute() method.
+ *
+ * Discriminated union by `status` (T4) — narrowing on status gives callers
+ * compile-time guarantees that the fields they need are present:
+ * - `FALLBACK` always carries a `fallbackHint`
+ * - `ERROR` always carries an `error` message
+ * - `FAIL` always carries a `verification` record
+ *
+ * `observation`, `rawData`, `verification` are intentionally optional on
+ * SUCCESS because not every tier produces all three (screenshot has no
+ * verification; text with no expectedLogcat has no verification record).
+ */
+export type TierResult =
+	| { tier: string; status: "SUCCESS"; observation?: string; verification?: TierVerification; rawData?: string }
+	| { tier: string; status: "FAIL"; observation?: string; verification: TierVerification; rawData?: string }
+	| { tier: string; status: "FALLBACK"; fallbackHint: string; observation?: string; rawData?: string }
+	| { tier: string; status: "ERROR"; error: string };
+
+/**
+ * Flatten a TierResult to a wire-friendly plain object for the MCP response.
+ * All variant-specific fields appear as undefined when absent.
+ */
+export const flattenTierResult = (result: TierResult): {
 	tier: string;
-	/** Execution status */
 	status: TierStatus;
-	/** What the Tier observed (on SUCCESS or FAIL) */
 	observation?: string;
-	/** Verification details (on SUCCESS or FAIL) */
 	verification?: TierVerification;
-	/** Hint for the next Tier (on FALLBACK) */
 	fallbackHint?: string;
-	/** Error message (on ERROR) */
 	error?: string;
-	/** Raw data collected (logs, XML dump, etc.) */
 	rawData?: string;
-}
+} => {
+	const out = { tier: result.tier, status: result.status } as Record<string, unknown>;
+	if (result.status === "SUCCESS" || result.status === "FAIL") {
+		if (result.observation !== undefined) out.observation = result.observation;
+		if (result.verification !== undefined) out.verification = result.verification;
+		if (result.rawData !== undefined) out.rawData = result.rawData;
+	} else if (result.status === "FALLBACK") {
+		out.fallbackHint = result.fallbackHint;
+		if (result.observation !== undefined) out.observation = result.observation;
+		if (result.rawData !== undefined) out.rawData = result.rawData;
+	} else {
+		out.error = result.error;
+	}
+	return out as ReturnType<typeof flattenTierResult>;
+};

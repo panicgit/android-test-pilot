@@ -73,9 +73,10 @@ const startStdioServer = async () => {
 		await server.connect(transport);
 
 		error("android-test-pilot server running on stdio");
-	} catch (err: any) {
+	} catch (err: unknown) {
 		console.error("Fatal error in main():", err);
-		error("Fatal error in main(): " + JSON.stringify(err.stack));
+		const stack = err instanceof Error ? err.stack : String(err);
+		error("Fatal error in main(): " + JSON.stringify(stack));
 		process.exit(1);
 	}
 };
@@ -114,4 +115,7 @@ const main = async () => {
 	}
 };
 
-main().then();
+main().catch(err => {
+	console.error("Fatal:", err);
+	process.exit(1);
+});

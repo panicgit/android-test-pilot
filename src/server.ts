@@ -62,7 +62,7 @@ export const createMcpServer = (): McpServer => {
 			const clientInfo = server.server.getClientVersion();
 			const clientName = clientInfo?.name || "unknown";
 			return clientName;
-		} catch (error: any) {
+		} catch {
 			return "unknown";
 		}
 	};
@@ -87,24 +87,24 @@ export const createMcpServer = (): McpServer => {
 				const response = await cb(args);
 				const duration = +new Date() - start;
 				trace(`=> ${response}`);
-				posthog("tool_invoked", { "ToolName": name, "Duration": duration }).then();
+				void posthog("tool_invoked", { "ToolName": name, "Duration": duration });
 				return {
 					content: [{ type: "text", text: response }],
 				};
-			} catch (error: any) {
-				posthog("tool_failed", { "ToolName": name }).then();
+			} catch (error: unknown) {
+				void posthog("tool_failed", { "ToolName": name });
 				if (error instanceof ActionableError) {
 					return {
 						content: [{ type: "text", text: `${error.message}. Please fix the issue and try again.` }],
 					};
-				} else {
-					// a real exception
-					trace(`Tool '${description}' failed: ${error.message} stack: ${error.stack}`);
-					return {
-						content: [{ type: "text", text: `Error: ${error.message}` }],
-						isError: true,
-					};
 				}
+				const message = error instanceof Error ? error.message : String(error);
+				const stack = error instanceof Error ? error.stack : undefined;
+				trace(`Tool '${description}' failed: ${message} stack: ${stack}`);
+				return {
+					content: [{ type: "text", text: `Error: ${message}` }],
+					isError: true,
+				};
 			}
 		}) as any);
 	};
@@ -147,14 +147,14 @@ export const createMcpServer = (): McpServer => {
 					distinct_id,
 				})
 			});
-		} catch (err: any) {
-			// ignore
+		} catch {
+			// telemetry must never break the tool call
 		}
 	};
 
 	const mobilecli = new Mobilecli();
 	const activeRecordings = new Map<string, ActiveRecording>();
-	posthog("launch", {}).then();
+	void posthog("launch", {});
 
 	const ensureMobilecliAvailable = (): void => {
 		try {
@@ -162,7 +162,7 @@ export const createMcpServer = (): McpServer => {
 			if (version.startsWith("failed")) {
 				throw new Error("mobilecli version check failed");
 			}
-		} catch (error: any) {
+		} catch {
 			throw new ActionableError(`mobilecli is not available or not working properly. Please review the documentation at https://github.com/mobile-next/mobile-mcp/wiki for installation instructions`);
 		}
 	};
@@ -251,7 +251,7 @@ export const createMcpServer = (): McpServer => {
 						state: "online",
 					});
 				}
-			} catch (error: any) {
+			} catch {
 				// If go-ios is not available, silently skip
 			}
 
@@ -674,10 +674,12 @@ export const createMcpServer = (): McpServer => {
 				return {
 					content: [{ type: "image", data: screenshot64, mimeType }]
 				};
-			} catch (err: any) {
-				error(`Error taking screenshot: ${err.message} ${err.stack}`);
+			} catch (err: unknown) {
+				const message = err instanceof Error ? err.message : String(err);
+				const stack = err instanceof Error ? err.stack : undefined;
+				error(`Error taking screenshot: ${message} ${stack}`);
 				return {
-					content: [{ type: "text", text: `Error: ${err.message}` }],
+					content: [{ type: "text", text: `Error: ${message}` }],
 					isError: true,
 				};
 			}

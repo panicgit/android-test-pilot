@@ -98,6 +98,15 @@ const getAdbPath = (): string => {
 	return exeName;
 };
 
+/** Extract a readable message from an execFileSync throw (has stdout/stderr buffers). */
+const formatAdbError = (error: unknown): string => {
+	const err = error as { stdout?: Buffer | string; stderr?: Buffer | string; message?: string };
+	const stdout = err.stdout ? err.stdout.toString() : "";
+	const stderr = err.stderr ? err.stderr.toString() : "";
+	const output = (stdout + stderr).trim();
+	return output || err.message || String(error);
+};
+
 const BUTTON_MAP: Record<Button, string> = {
 	"BACK": "KEYCODE_BACK",
 	"HOME": "KEYCODE_HOME",
@@ -423,22 +432,16 @@ export class AndroidRobot implements Robot {
 	public async installApp(path: string): Promise<void> {
 		try {
 			this.adb("install", "-r", path);
-		} catch (error: any) {
-			const stdout = error.stdout ? error.stdout.toString() : "";
-			const stderr = error.stderr ? error.stderr.toString() : "";
-			const output = (stdout + stderr).trim();
-			throw new ActionableError(output || error.message);
+		} catch (error: unknown) {
+			throw new ActionableError(formatAdbError(error));
 		}
 	}
 
 	public async uninstallApp(bundleId: string): Promise<void> {
 		try {
 			this.adb("uninstall", bundleId);
-		} catch (error: any) {
-			const stdout = error.stdout ? error.stdout.toString() : "";
-			const stderr = error.stderr ? error.stderr.toString() : "";
-			const output = (stdout + stderr).trim();
-			throw new ActionableError(output || error.message);
+		} catch (error: unknown) {
+			throw new ActionableError(formatAdbError(error));
 		}
 	}
 

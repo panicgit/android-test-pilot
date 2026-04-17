@@ -5,6 +5,31 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+### Sprint 3 (improvement/sprint-3-final)
+
+#### Correctness
+- **A5** — `atp_run_step` now splits action from verification.
+  `TierContext.phase` (`"act"` | `"verify"`) gates each tier; UiAutomatorTier
+  no longer claims SUCCESS for a step that declared `expectedLogcat`
+  without checking logs. Response carries `actResult` + `verifyResult`
+  while mirroring the verify result into legacy top-level fields.
+
+#### Performance
+- **T5 + P5** — entire ADB surface converted to async. `adb()` and
+  `silentAdb()` return `Promise<Buffer>` via `util.promisify(execFile)`.
+  All AndroidRobot instance methods await. AndroidDeviceManager
+  enumeration becomes Promise-returning. Event loop is no longer
+  blocked for up to 30s per tool call.
+- **P6** — `TextTier.execute` fires `getDumpsysActivity` and
+  `getDumpsysWindow` in `Promise.all`, ~2× wall-clock on the dumpsys step.
+
+#### Documentation
+- **C4 + C10 + S3-7** — `docs/instrumentation-guide.md` covers
+  BuildConfig gating, Proguard keep rules (Log.println bypass),
+  Jetpack Compose `testTagsAsResourceId`, Timber adapter, and the
+  recomposition-storm avoidance pattern. Linked from README and
+  TROUBLESHOOTING.
+
 ### Distribution pivot
 **Breaking** — android-test-pilot is no longer published to npm.
 Distribution is exclusively via the Claude Code marketplace

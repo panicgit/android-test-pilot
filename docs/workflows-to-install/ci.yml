@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test (Node ${{ matrix.node }} / ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        node: ["18", "20", "22"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: "npm"
+
+      - name: Install
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm test
+
+      - name: Bench (offline harness)
+        run: npm run bench
+
+      - name: Regression check (tier-routing baseline)
+        if: matrix.os == 'ubuntu-latest' && matrix.node == '20'
+        run: npm run bench -- --compare bench/results/baseline.json
+
+  pack-check:
+    name: npm pack (verify tarball contents)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci
+      - run: npm run build
+      - name: npm pack --dry-run
+        run: npm pack --dry-run 2>&1 | tee pack.log
+      - name: Verify required paths in tarball
+        run: |
+          grep -q "skills/analyze-app/SKILL.md" pack.log || (echo "Missing skills/analyze-app" && exit 1)
+          grep -q "skills/run-test/SKILL.md"    pack.log || (echo "Missing skills/run-test"    && exit 1)
+          grep -q "LICENSE"                     pack.log || (echo "Missing LICENSE"            && exit 1)
+          grep -q "NOTICE"                      pack.log || (echo "Missing NOTICE"             && exit 1)
+          grep -q "CHANGELOG.md"                pack.log || (echo "Missing CHANGELOG.md"       && exit 1)
+          ! grep -q "design-request"            pack.log || (echo "Leaked design-request"      && exit 1)
+          ! grep -q "IMPROVEMENT_PLAN"          pack.log || (echo "Leaked IMPROVEMENT_PLAN"    && exit 1)
+          ! grep -q "\.omc/"                    pack.log || (echo "Leaked .omc"                && exit 1)

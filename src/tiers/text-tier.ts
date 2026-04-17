@@ -34,12 +34,14 @@ export class TextTier extends AbstractTier {
 		const robot = this.getAndroidRobot(context);
 		const observations: string[] = [];
 
-		// 1. Collect dumpsys info (FALLBACK on ADB failure)
+		// 1. Collect dumpsys info in parallel (P6) — FALLBACK on ADB failure.
 		let activityInfo: string;
 		let windowInfo: string;
 		try {
-			activityInfo = robot.getDumpsysActivity();
-			windowInfo = robot.getDumpsysWindow();
+			[activityInfo, windowInfo] = await Promise.all([
+				robot.getDumpsysActivity(),
+				robot.getDumpsysWindow(),
+			]);
 		} catch (err: unknown) {
 			const message = err instanceof Error ? err.message : String(err);
 			return {

@@ -181,15 +181,15 @@ export const createMcpServer = (): McpServer => {
 	 * ATP-specific tools that only work on Android (dumpsys, logcat, run_step).
 	 * Replaces the getRobotFromDevice + isAndroidRobot boilerplate.
 	 */
-	const getAndroidRobotFromDevice = (deviceId: string): AndroidRobot => {
-		const robot = getRobotFromDevice(deviceId);
+	const getAndroidRobotFromDevice = async (deviceId: string): Promise<AndroidRobot> => {
+		const robot = await getRobotFromDevice(deviceId);
 		if (!isAndroidRobot(robot)) {
 			throw new ActionableError(`This tool requires an Android device; "${deviceId}" is not Android.`);
 		}
 		return robot;
 	};
 
-	const getRobotFromDevice = (deviceId: string): Robot => {
+	const getRobotFromDevice = async (deviceId: string): Promise<Robot> => {
 
 		// from now on, we must have mobilecli working
 		ensureMobilecliAvailable();
@@ -204,7 +204,7 @@ export const createMcpServer = (): McpServer => {
 
 		// Check if it's an Android device
 		const androidManager = new AndroidDeviceManager();
-		const androidDevices = androidManager.getConnectedDevices();
+		const androidDevices = await androidManager.getConnectedDevices();
 		const androidDevice = androidDevices.find(d => d.deviceId === deviceId);
 		if (androidDevice) {
 			return new AndroidRobot(deviceId);
@@ -244,7 +244,7 @@ export const createMcpServer = (): McpServer => {
 			const devices: MobilecliDevice[] = [];
 
 			// Get Android devices with details
-			const androidDevices = androidManager.getConnectedDevicesWithDetails();
+			const androidDevices = await androidManager.getConnectedDevicesWithDetails();
 			for (const device of androidDevices) {
 				devices.push({
 					id: device.deviceId,
@@ -352,7 +352,7 @@ export const createMcpServer = (): McpServer => {
 		},
 		{ readOnlyHint: true },
 		async ({ device }) => {
-			const robot = getRobotFromDevice(device);
+			const robot = await getRobotFromDevice(device);
 			const result = await robot.listApps();
 			return `Found these apps on device: ${result.map(app => `${app.appName} (${app.packageName})`).join(", ")}`;
 		}
@@ -369,7 +369,7 @@ export const createMcpServer = (): McpServer => {
 		},
 		{ destructiveHint: true },
 		async ({ device, packageName, locale }) => {
-			const robot = getRobotFromDevice(device);
+			const robot = await getRobotFromDevice(device);
 			await robot.launchApp(packageName, locale);
 			return `Launched app ${packageName}`;
 		}
@@ -385,7 +385,7 @@ export const createMcpServer = (): McpServer => {
 		},
 		{ destructiveHint: true },
 		async ({ device, packageName }) => {
-			const robot = getRobotFromDevice(device);
+			const robot = await getRobotFromDevice(device);
 			await robot.terminateApp(packageName);
 			return `Terminated app ${packageName}`;
 		}
@@ -401,7 +401,7 @@ export const createMcpServer = (): McpServer => {
 		},
 		{ destructiveHint: true },
 		async ({ device, path }) => {
-			const robot = getRobotFromDevice(device);
+			const robot = await getRobotFromDevice(device);
 			await robot.installApp(path);
 			return `Installed app from ${path}`;
 		}
@@ -417,7 +417,7 @@ export const createMcpServer = (): McpServer => {
 		},
 		{ destructiveHint: true },
 		async ({ device, bundle_id }) => {
-			const robot = getRobotFromDevice(device);
+			const robot = await getRobotFromDevice(device);
 			await robot.uninstallApp(bundle_id);
 			return `Uninstalled app ${bundle_id}`;
 		}
@@ -432,7 +432,7 @@ export const createMcpServer = (): McpServer => {
 		},
 		{ readOnlyHint: true },
 		async ({ device }) => {
-			const robot = getRobotFromDevice(device);
+			const robot = await getRobotFromDevice(device);
 			const screenSize = await robot.getScreenSize();
 			return `Screen size is ${screenSize.width}x${screenSize.height} pixels`;
 		}
@@ -449,7 +449,7 @@ export const createMcpServer = (): McpServer => {
 		},
 		{ destructiveHint: true },
 		async ({ device, x, y }) => {
-			const robot = getRobotFromDevice(device);
+			const robot = await getRobotFromDevice(device);
 			await robot.tap(x, y);
 			return `Clicked on screen at coordinates: ${x}, ${y}`;
 		}
@@ -466,7 +466,7 @@ export const createMcpServer = (): McpServer => {
 		},
 		{ destructiveHint: true },
 		async ({ device, x, y }) => {
-			const robot = getRobotFromDevice(device);
+			const robot = await getRobotFromDevice(device);
 			await robot!.doubleTap(x, y);
 			return `Double-tapped on screen at coordinates: ${x}, ${y}`;
 		}
@@ -484,7 +484,7 @@ export const createMcpServer = (): McpServer => {
 		},
 		{ destructiveHint: true },
 		async ({ device, x, y, duration }) => {
-			const robot = getRobotFromDevice(device);
+			const robot = await getRobotFromDevice(device);
 			const pressDuration = duration ?? 500;
 			await robot.longPress(x, y, pressDuration);
 			return `Long pressed on screen at coordinates: ${x}, ${y} for ${pressDuration}ms`;
@@ -500,7 +500,7 @@ export const createMcpServer = (): McpServer => {
 		},
 		{ readOnlyHint: true },
 		async ({ device }) => {
-			const robot = getRobotFromDevice(device);
+			const robot = await getRobotFromDevice(device);
 			const elements = await robot.getElementsOnScreen();
 
 			const result = elements.map(element => {
@@ -540,7 +540,7 @@ export const createMcpServer = (): McpServer => {
 		},
 		{ destructiveHint: true },
 		async ({ device, button }) => {
-			const robot = getRobotFromDevice(device);
+			const robot = await getRobotFromDevice(device);
 			await robot.pressButton(button);
 			return `Pressed the button: ${button}`;
 		}
@@ -561,7 +561,7 @@ export const createMcpServer = (): McpServer => {
 				throw new ActionableError("Only http:// and https:// URLs are allowed. Set MOBILEMCP_ALLOW_UNSAFE_URLS=1 to allow other URL schemes.");
 			}
 
-			const robot = getRobotFromDevice(device);
+			const robot = await getRobotFromDevice(device);
 			await robot.openUrl(url);
 			return `Opened URL: ${url}`;
 		}
@@ -580,7 +580,7 @@ export const createMcpServer = (): McpServer => {
 		},
 		{ destructiveHint: true },
 		async ({ device, direction, x, y, distance }) => {
-			const robot = getRobotFromDevice(device);
+			const robot = await getRobotFromDevice(device);
 
 			if (x !== undefined && y !== undefined) {
 				// Use coordinate-based swipe
@@ -606,7 +606,7 @@ export const createMcpServer = (): McpServer => {
 		},
 		{ destructiveHint: true },
 		async ({ device, text, submit }) => {
-			const robot = getRobotFromDevice(device);
+			const robot = await getRobotFromDevice(device);
 			await robot.sendKeys(text);
 
 			if (submit) {
@@ -630,7 +630,7 @@ export const createMcpServer = (): McpServer => {
 			validateFileExtension(saveTo, ALLOWED_SCREENSHOT_EXTENSIONS, "save_screenshot");
 			validateOutputPath(saveTo);
 
-			const robot = getRobotFromDevice(device);
+			const robot = await getRobotFromDevice(device);
 
 			const screenshot = await robot.getScreenshot();
 			fs.writeFileSync(saveTo, screenshot);
@@ -652,7 +652,7 @@ export const createMcpServer = (): McpServer => {
 		},
 		async ({ device }) => {
 			try {
-				const robot = getRobotFromDevice(device);
+				const robot = await getRobotFromDevice(device);
 				const screenSize = await robot.getScreenSize();
 
 				let screenshot = await robot.getScreenshot();
@@ -714,7 +714,7 @@ export const createMcpServer = (): McpServer => {
 		},
 		{ destructiveHint: true },
 		async ({ device, orientation }) => {
-			const robot = getRobotFromDevice(device);
+			const robot = await getRobotFromDevice(device);
 			await robot.setOrientation(orientation);
 			return `Changed device orientation to ${orientation}`;
 		}
@@ -729,7 +729,7 @@ export const createMcpServer = (): McpServer => {
 		},
 		{ readOnlyHint: true },
 		async ({ device }) => {
-			const robot = getRobotFromDevice(device);
+			const robot = await getRobotFromDevice(device);
 			const orientation = await robot.getOrientation();
 			return `Current device orientation is ${orientation}`;
 		}
@@ -751,7 +751,8 @@ export const createMcpServer = (): McpServer => {
 				validateOutputPath(output);
 			}
 
-			getRobotFromDevice(device);
+			// Validate device exists (throws ActionableError otherwise).
+			await getRobotFromDevice(device);
 
 			if (activeRecordings.has(device)) {
 				throw new ActionableError(`Device "${device}" is already being recorded. Stop the current recording first with mobile_stop_screen_recording.`);
@@ -839,7 +840,7 @@ export const createMcpServer = (): McpServer => {
 		},
 		{ readOnlyHint: true },
 		async ({ device, type }) => {
-			const robot = getAndroidRobotFromDevice(device);
+			const robot = await getAndroidRobotFromDevice(device);
 			if (type === "activity") {
 				return robot.getDumpsysActivity();
 			} else {
@@ -861,7 +862,7 @@ export const createMcpServer = (): McpServer => {
 		},
 		{ readOnlyHint: true },
 		async ({ device, tags, durationSeconds }) => {
-			const robot = getAndroidRobotFromDevice(device);
+			const robot = await getAndroidRobotFromDevice(device);
 			const session = robot.startLogcat(tags, durationSeconds);
 			return JSON.stringify({
 				sessionId: session.id,
@@ -884,7 +885,7 @@ export const createMcpServer = (): McpServer => {
 		},
 		{ readOnlyHint: true },
 		async ({ device, sessionId, since }) => {
-			const robot = getAndroidRobotFromDevice(device);
+			const robot = await getAndroidRobotFromDevice(device);
 			// Verify session belongs to this device
 			const session = AndroidRobot.getSession(sessionId);
 			if (session && session.deviceId !== device) {
@@ -911,7 +912,7 @@ export const createMcpServer = (): McpServer => {
 		},
 		{ destructiveHint: true },
 		async ({ device, sessionId }) => {
-			const robot = getAndroidRobotFromDevice(device);
+			const robot = await getAndroidRobotFromDevice(device);
 			// Verify session belongs to this device (matches atp_logcat_read)
 			const session = AndroidRobot.getSession(sessionId);
 			if (session && session.deviceId !== device) {
@@ -954,7 +955,7 @@ export const createMcpServer = (): McpServer => {
 		},
 		{ destructiveHint: true },
 		async ({ device, action, verification, expectedLogcat, tapTarget, skipVerification }) => {
-			const robot = getAndroidRobotFromDevice(device);
+			const robot = await getAndroidRobotFromDevice(device);
 
 			// Auto-start a logcat session if expectedLogcat is provided and none
 			// is live. Removes the "model forgot atp_logcat_start" foot-gun (C8).

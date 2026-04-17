@@ -1,7 +1,10 @@
 import path from "node:path";
 import crypto from "node:crypto";
-import { execFileSync, spawn, ChildProcess } from "node:child_process";
+import { execFile, spawn, ChildProcess } from "node:child_process";
+import { promisify } from "node:util";
 import { existsSync } from "node:fs";
+
+const execFileAsync = promisify(execFile);
 
 import * as xml from "fast-xml-parser";
 
@@ -202,24 +205,35 @@ export class AndroidRobot implements Robot {
 		return this.deviceId;
 	}
 
-	public adb(...args: string[]): Buffer {
-		return execFileSync(getAdbPath(), ["-s", this.deviceId, ...args], {
+	/**
+	 * Run an adb command asynchronously against this device and return the
+	 * combined stdout as a Buffer. Never blocks the event loop (S3-1).
+	 * Throws on non-zero exit; the thrown object carries `.stdout`/`.stderr`
+	 * for `formatAdbError()` to unwrap.
+	 */
+	public async adb(...args: string[]): Promise<Buffer> {
+		const { stdout } = await execFileAsync(getAdbPath(), ["-s", this.deviceId, ...args], {
 			maxBuffer: MAX_BUFFER_SIZE,
 			timeout: TIMEOUT,
+			encoding: "buffer",
 		});
+		return stdout;
 	}
 
-	public silentAdb(...args: string[]): Buffer {
-		return execFileSync(getAdbPath(), ["-s", this.deviceId, ...args], {
+	/** Like adb() but suppresses stdout/stderr streaming when the caller
+	 * doesn't care about output (e.g. fire-and-forget setters). */
+	public async silentAdb(...args: string[]): Promise<Buffer> {
+		const { stdout } = await execFileAsync(getAdbPath(), ["-s", this.deviceId, ...args], {
 			maxBuffer: MAX_BUFFER_SIZE,
 			timeout: TIMEOUT,
-			stdio: ["pipe", "pipe", "pipe"],
+			encoding: "buffer",
 		});
+		return stdout;
 	}
 
-	public getSystemFeatures(): string[] {
-		return this.adb("shell", "pm", "list", "features")
-			.toString()
+	public async getSystemFeatures(): Promise<string[]> {
+		const output = (await this.adb("shell", "pm", "list", "features")).toString();
+		return output
 			.split("\n")
 			.map(line => line.trim())
 			.filter(line => line.startsWith("feature:"))
@@ -227,7 +241,7 @@ export class AndroidRobot implements Robot {
 	}
 
 	public async getScreenSize(): Promise<ScreenSize> {
-		const screenSize = this.adb("shell", "wm", "size")
+		const screenSize = (await this.adb("shell", "wm", "size"))
 			.toString()
 			.split(" ")
 			.pop();
@@ -243,8 +257,8 @@ export class AndroidRobot implements Robot {
 
 	public async listApps(): Promise<InstalledApp[]> {
 		// only apps that have a launcher activity are returned
-		return this.adb("shell", "cmd", "package", "query-activities", "-a", "android.intent.action.MAIN", "-c", "android.intent.category.LAUNCHER")
-			.toString()
+		const output = (await this.adb("shell", "cmd", "package", "query-activities", "-a", "android.intent.action.MAIN", "-c", "android.intent.category.LAUNCHER")).toString();
+		return output
 			.split("\n")
 			.map(line => line.trim())
 			.filter(line => line.startsWith("packageName="))
@@ -257,8 +271,8 @@ export class AndroidRobot implements Robot {
 	}
 
 	private async listPackages(): Promise<string[]> {
-		return this.adb("shell", "pm", "list", "packages")
-			.toString()
+		const output = (await this.adb("shell", "pm", "list", "packages")).toString();
+		return output
 			.split("\n")
 			.map(line => line.trim())
 			.filter(line => line.startsWith("package:"))
@@ -271,22 +285,22 @@ export class AndroidRobot implements Robot {
 		if (locale) {
 			validateLocale(locale);
 			try {
-				this.silentAdb("shell", "cmd", "locale", "set-app-locales", packageName, "--locales", locale);
+				await this.silentAdb("shell", "cmd", "locale", "set-app-locales", packageName, "--locales", locale);
 			} catch {
 				// set-app-locales requires Android 13+ (API 33), silently ignore on older versions
 			}
 		}
 
 		try {
-			this.silentAdb("shell", "monkey", "-p", packageName, "-c", "android.intent.category.LAUNCHER", "1");
+			await this.silentAdb("shell", "monkey", "-p", packageName, "-c", "android.intent.category.LAUNCHER", "1");
 		} catch {
 			throw new ActionableError(`Failed launching app with package name "${packageName}", please make sure it exists`);
 		}
 	}
 
 	public async listRunningProcesses(): Promise<string[]> {
-		return this.adb("shell", "ps", "-e")
-			.toString()
+		const output = (await this.adb("shell", "ps", "-e")).toString();
+		return output
 			.split("\n")
 			.map(line => line.trim())
 			.filter(line => line.startsWith("u")) // non-system processes
@@ -324,7 +338,7 @@ export class AndroidRobot implements Robot {
 				throw new ActionableError(`Swipe direction "${direction}" is not supported`);
 		}
 
-		this.adb("shell", "input", "swipe", `${x0}`, `${y0}`, `${x1}`, `${y1}`, "1000");
+		await this.adb("shell", "input", "swipe", `${x0}`, `${y0}`, `${x1}`, `${y1}`, "1000");
 	}
 
 	public async swipeFromCoordinate(x: number, y: number, direction: SwipeDirection, distance?: number): Promise<void> {
@@ -363,21 +377,21 @@ export class AndroidRobot implements Robot {
 				throw new ActionableError(`Swipe direction "${direction}" is not supported`);
 		}
 
-		this.adb("shell", "input", "swipe", `${x0}`, `${y0}`, `${x1}`, `${y1}`, "1000");
+		await this.adb("shell", "input", "swipe", `${x0}`, `${y0}`, `${x1}`, `${y1}`, "1000");
 	}
 
-	private getDisplayCount(): number {
-		return this.adb("shell", "dumpsys", "SurfaceFlinger", "--display-id")
-			.toString()
+	private async getDisplayCount(): Promise<number> {
+		const output = (await this.adb("shell", "dumpsys", "SurfaceFlinger", "--display-id")).toString();
+		return output
 			.split("\n")
 			.filter(s => s.startsWith("Display "))
 			.length;
 	}
 
-	private getFirstDisplayId(): string | null {
+	private async getFirstDisplayId(): Promise<string | null> {
 		try {
 			// Try using cmd display get-displays (Android 11+)
-			const displays = this.adb("shell", "cmd", "display", "get-displays")
+			const displays = (await this.adb("shell", "cmd", "display", "get-displays"))
 				.toString()
 				.split("\n")
 				.filter(s => s.startsWith("Display id "))
@@ -403,8 +417,7 @@ export class AndroidRobot implements Robot {
 
 		// fallback: parse dumpsys display for display info (compatible with older Android versions)
 		try {
-			const dumpsys = this.adb("shell", "dumpsys", "display")
-				.toString();
+			const dumpsys = (await this.adb("shell", "dumpsys", "display")).toString();
 
 			// look for DisplayViewport entries with isActive=true and type=INTERNAL
 			const viewportMatch = dumpsys.match(/DisplayViewport\{type=INTERNAL[^}]*isActive=true[^}]*uniqueId='([^']+)'/);
@@ -430,13 +443,13 @@ export class AndroidRobot implements Robot {
 	}
 
 	public async getScreenshot(): Promise<Buffer> {
-		if (this.getDisplayCount() <= 1) {
+		if ((await this.getDisplayCount()) <= 1) {
 			// backward compatibility for android 10 and below, and for single display devices
 			return this.adb("exec-out", "screencap", "-p");
 		}
 
 		// find the first display that is turned on, and capture that one
-		const displayId = this.getFirstDisplayId();
+		const displayId = await this.getFirstDisplayId();
 		if (displayId === null) {
 			// no idea why, but we have displayCount >= 2, yet we failed to parse
 			// let's go with screencap's defaults and hope for the best
@@ -494,12 +507,12 @@ export class AndroidRobot implements Robot {
 
 	public async terminateApp(packageName: string): Promise<void> {
 		validatePackageName(packageName);
-		this.adb("shell", "am", "force-stop", packageName);
+		await this.adb("shell", "am", "force-stop", packageName);
 	}
 
 	public async installApp(path: string): Promise<void> {
 		try {
-			this.adb("install", "-r", path);
+			await this.adb("install", "-r", path);
 		} catch (error: unknown) {
 			throw new ActionableError(formatAdbError(error));
 		}
@@ -507,14 +520,14 @@ export class AndroidRobot implements Robot {
 
 	public async uninstallApp(bundleId: string): Promise<void> {
 		try {
-			this.adb("uninstall", bundleId);
+			await this.adb("uninstall", bundleId);
 		} catch (error: unknown) {
 			throw new ActionableError(formatAdbError(error));
 		}
 	}
 
 	public async openUrl(url: string): Promise<void> {
-		this.adb("shell", "am", "start", "-a", "android.intent.action.VIEW", "-d", this.escapeShellText(url));
+		await this.adb("shell", "am", "start", "-a", "android.intent.action.VIEW", "-d", this.escapeShellText(url));
 	}
 
 	private isAscii(text: string): boolean {
@@ -542,17 +555,17 @@ export class AndroidRobot implements Robot {
 			// adb shell input only supports ascii characters. and
 			// some of the keys have to be escaped.
 			const _text = this.escapeShellText(text);
-			this.adb("shell", "input", "text", _text);
+			await this.adb("shell", "input", "text", _text);
 		} else if (await this.isDeviceKitInstalled()) {
 			// try sending over clipboard
 			const base64 = Buffer.from(text).toString("base64");
 
 			// send clipboard over and immediately paste it
-			this.adb("shell", "am", "broadcast", "-a", "devicekit.clipboard.set", "-e", "encoding", "base64", "-e", "text", base64, "-n", "com.mobilenext.devicekit/.ClipboardBroadcastReceiver");
-			this.adb("shell", "input", "keyevent", "KEYCODE_PASTE");
+			await this.adb("shell", "am", "broadcast", "-a", "devicekit.clipboard.set", "-e", "encoding", "base64", "-e", "text", base64, "-n", "com.mobilenext.devicekit/.ClipboardBroadcastReceiver");
+			await this.adb("shell", "input", "keyevent", "KEYCODE_PASTE");
 
 			// clear clipboard when we're done
-			this.adb("shell", "am", "broadcast", "-a", "devicekit.clipboard.clear", "-n", "com.mobilenext.devicekit/.ClipboardBroadcastReceiver");
+			await this.adb("shell", "am", "broadcast", "-a", "devicekit.clipboard.clear", "-n", "com.mobilenext.devicekit/.ClipboardBroadcastReceiver");
 		} else {
 			throw new ActionableError("Non-ASCII text is not supported on Android, please install mobilenext devicekit, see https://github.com/mobile-next/devicekit-android");
 		}
@@ -564,16 +577,16 @@ export class AndroidRobot implements Robot {
 		}
 
 		const mapped = BUTTON_MAP[button];
-		this.adb("shell", "input", "keyevent", mapped);
+		await this.adb("shell", "input", "keyevent", mapped);
 	}
 
 	public async tap(x: number, y: number): Promise<void> {
-		this.adb("shell", "input", "tap", `${x}`, `${y}`);
+		await this.adb("shell", "input", "tap", `${x}`, `${y}`);
 	}
 
 	public async longPress(x: number, y: number, duration: number): Promise<void> {
 		// a long press is a swipe with no movement and a long duration
-		this.adb("shell", "input", "swipe", `${x}`, `${y}`, `${x}`, `${y}`, `${duration}`);
+		await this.adb("shell", "input", "swipe", `${x}`, `${y}`, `${x}`, `${y}`, `${duration}`);
 	}
 
 	public async doubleTap(x: number, y: number): Promise<void> {
@@ -586,18 +599,18 @@ export class AndroidRobot implements Robot {
 		const value = orientation === "portrait" ? 0 : 1;
 
 		// disable auto-rotation prior to setting the orientation
-		this.adb("shell", "settings", "put", "system", "accelerometer_rotation", "0");
-		this.adb("shell", "content", "insert", "--uri", "content://settings/system", "--bind", "name:s:user_rotation", "--bind", `value:i:${value}`);
+		await this.adb("shell", "settings", "put", "system", "accelerometer_rotation", "0");
+		await this.adb("shell", "content", "insert", "--uri", "content://settings/system", "--bind", "name:s:user_rotation", "--bind", `value:i:${value}`);
 	}
 
 	public async getOrientation(): Promise<Orientation> {
-		const rotation = this.adb("shell", "settings", "get", "system", "user_rotation").toString().trim();
+		const rotation = (await this.adb("shell", "settings", "get", "system", "user_rotation")).toString().trim();
 		return rotation === "0" ? "portrait" : "landscape";
 	}
 
 	private async getUiAutomatorDump(): Promise<string> {
 		for (let tries = 0; tries < 10; tries++) {
-			const dump = this.adb("exec-out", "uiautomator", "dump", "/dev/tty").toString();
+			const dump = (await this.adb("exec-out", "uiautomator", "dump", "/dev/tty")).toString();
 			// note: we're not catching other errors here. maybe we should check for <?xml
 			if (dump.includes("null root node returned by UiTestAutomationBridge")) {
 				// uncomment for debugging
@@ -640,10 +653,9 @@ export class AndroidRobot implements Robot {
 	 * Get the current foreground Activity via dumpsys.
 	 * Returns parsed activity info as text.
 	 */
-	public getDumpsysActivity(): string {
+	public async getDumpsysActivity(): Promise<string> {
 		try {
-			const output = this.adb("shell", "dumpsys", "activity", "activities")
-				.toString();
+			const output = (await this.adb("shell", "dumpsys", "activity", "activities")).toString();
 			// Extract the focused activity line
 			const lines = output.split("\n");
 			const resumedLine = lines.find(l => l.includes("mResumedActivity") || l.includes("ResumedActivity"));
@@ -663,10 +675,9 @@ export class AndroidRobot implements Robot {
 	/**
 	 * Get the current focused window via dumpsys.
 	 */
-	public getDumpsysWindow(): string {
+	public async getDumpsysWindow(): Promise<string> {
 		try {
-			const output = this.adb("shell", "dumpsys", "window", "windows")
-				.toString();
+			const output = (await this.adb("shell", "dumpsys", "window", "windows")).toString();
 			const lines = output.split("\n");
 			const focusedLine = lines.find(l => l.includes("mCurrentFocus") || l.includes("mFocusedWindow"));
 			const inputLine = lines.find(l => l.includes("mInputMethodTarget"));
@@ -870,10 +881,10 @@ export class AndroidRobot implements Robot {
 
 export class AndroidDeviceManager {
 
-	private getDeviceType(name: string): AndroidDeviceType {
+	private async getDeviceType(name: string): Promise<AndroidDeviceType> {
 		try {
 			const device = new AndroidRobot(name);
-			const features = device.getSystemFeatures();
+			const features = await device.getSystemFeatures();
 			if (features.includes("android.software.leanback") || features.includes("android.hardware.type.television")) {
 				return "tv";
 			}
@@ -884,23 +895,26 @@ export class AndroidDeviceManager {
 		}
 	}
 
-	private getDeviceVersion(deviceId: string): string {
+	private async getDeviceVersion(deviceId: string): Promise<string> {
 		try {
-			const output = execFileSync(getAdbPath(), ["-s", deviceId, "shell", "getprop", "ro.build.version.release"], {
+			const { stdout } = await execFileAsync(getAdbPath(), ["-s", deviceId, "shell", "getprop", "ro.build.version.release"], {
 				timeout: 5000,
-			}).toString().trim();
-			return output;
+				encoding: "buffer",
+			});
+			return stdout.toString().trim();
 		} catch {
 			return "unknown";
 		}
 	}
 
-	private getDeviceName(deviceId: string): string {
+	private async getDeviceName(deviceId: string): Promise<string> {
 		try {
 			// Try getting AVD name first (for emulators)
-			const avdName = execFileSync(getAdbPath(), ["-s", deviceId, "shell", "getprop", "ro.boot.qemu.avd_name"], {
+			const { stdout: avdStdout } = await execFileAsync(getAdbPath(), ["-s", deviceId, "shell", "getprop", "ro.boot.qemu.avd_name"], {
 				timeout: 5000,
-			}).toString().trim();
+				encoding: "buffer",
+			});
+			const avdName = avdStdout.toString().trim();
 
 			if (avdName !== "") {
 				// Replace underscores with spaces (e.g., "Pixel_9_Pro" -> "Pixel 9 Pro")
@@ -908,19 +922,22 @@ export class AndroidDeviceManager {
 			}
 
 			// Fall back to product model
-			const output = execFileSync(getAdbPath(), ["-s", deviceId, "shell", "getprop", "ro.product.model"], {
+			const { stdout } = await execFileAsync(getAdbPath(), ["-s", deviceId, "shell", "getprop", "ro.product.model"], {
 				timeout: 5000,
-			}).toString().trim();
-			return output;
+				encoding: "buffer",
+			});
+			return stdout.toString().trim();
 		} catch {
 			return deviceId;
 		}
 	}
 
-	public getConnectedDevices(): AndroidDevice[] {
+	public async getConnectedDevices(): Promise<AndroidDevice[]> {
 		try {
-			const names = execFileSync(getAdbPath(), ["devices"])
-				.toString()
+			const { stdout } = await execFileAsync(getAdbPath(), ["devices"], {
+				encoding: "buffer",
+			});
+			const names = stdout.toString()
 				.split("\n")
 				.map(line => line.trim())
 				.filter(line => line !== "")
@@ -928,20 +945,22 @@ export class AndroidDeviceManager {
 				.filter(line => line.split("\t")[1]?.trim() === "device")  // Only include devices that are online and ready
 				.map(line => line.split("\t")[0]);
 
-			return names.map(name => ({
+			return Promise.all(names.map(async (name) => ({
 				deviceId: name,
-				deviceType: this.getDeviceType(name),
-			}));
+				deviceType: await this.getDeviceType(name),
+			})));
 		} catch {
 			console.error("Could not execute adb command, maybe ANDROID_HOME is not set?");
 			return [];
 		}
 	}
 
-	public getConnectedDevicesWithDetails(): Array<AndroidDevice & { version: string, name: string }> {
+	public async getConnectedDevicesWithDetails(): Promise<Array<AndroidDevice & { version: string; name: string }>> {
 		try {
-			const names = execFileSync(getAdbPath(), ["devices"])
-				.toString()
+			const { stdout } = await execFileAsync(getAdbPath(), ["devices"], {
+				encoding: "buffer",
+			});
+			const names = stdout.toString()
 				.split("\n")
 				.map(line => line.trim())
 				.filter(line => line !== "")
@@ -949,12 +968,12 @@ export class AndroidDeviceManager {
 				.filter(line => line.split("\t")[1]?.trim() === "device")  // Only include devices that are online and ready
 				.map(line => line.split("\t")[0]);
 
-			return names.map(deviceId => ({
+			return Promise.all(names.map(async (deviceId) => ({
 				deviceId,
-				deviceType: this.getDeviceType(deviceId),
-				version: this.getDeviceVersion(deviceId),
-				name: this.getDeviceName(deviceId),
-			}));
+				deviceType: await this.getDeviceType(deviceId),
+				version: await this.getDeviceVersion(deviceId),
+				name: await this.getDeviceName(deviceId),
+			})));
 		} catch {
 			console.error("Could not execute adb command, maybe ANDROID_HOME is not set?");
 			return [];

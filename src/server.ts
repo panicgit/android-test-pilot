@@ -25,6 +25,11 @@ import { loadAppMap } from "./app-map";
 const ALLOWED_SCREENSHOT_EXTENSIONS = [".png", ".jpg", ".jpeg"];
 const ALLOWED_RECORDING_EXTENSIONS = [".mp4"];
 
+/** Shared Zod schema for the device identifier argument (T7). */
+const DEVICE_SCHEMA = z.string().describe(
+	"The device identifier to use. Use mobile_list_available_devices to find which devices are available to you.",
+);
+
 interface MobilecliDevice {
 	id: string;
 	name: string;
@@ -169,6 +174,19 @@ export const createMcpServer = (): McpServer => {
 
 	const isAndroidRobot = (robot: Robot): robot is AndroidRobot => {
 		return robot instanceof AndroidRobot;
+	};
+
+	/**
+	 * Resolve a device ID to an AndroidRobot or throw ActionableError. Used by
+	 * ATP-specific tools that only work on Android (dumpsys, logcat, run_step).
+	 * Replaces the getRobotFromDevice + isAndroidRobot boilerplate.
+	 */
+	const getAndroidRobotFromDevice = (deviceId: string): AndroidRobot => {
+		const robot = getRobotFromDevice(deviceId);
+		if (!isAndroidRobot(robot)) {
+			throw new ActionableError(`This tool requires an Android device; "${deviceId}" is not Android.`);
+		}
+		return robot;
 	};
 
 	const getRobotFromDevice = (deviceId: string): Robot => {
@@ -330,7 +348,7 @@ export const createMcpServer = (): McpServer => {
 		"List Apps",
 		"List all the installed apps on the device",
 		{
-			device: z.string().describe("The device identifier to use. Use mobile_list_available_devices to find which devices are available to you.")
+			device: DEVICE_SCHEMA
 		},
 		{ readOnlyHint: true },
 		async ({ device }) => {
@@ -345,7 +363,7 @@ export const createMcpServer = (): McpServer => {
 		"Launch App",
 		"Launch an app on mobile device. Use this to open a specific app. You can find the package name of the app by calling list_apps_on_device.",
 		{
-			device: z.string().describe("The device identifier to use. Use mobile_list_available_devices to find which devices are available to you."),
+			device: DEVICE_SCHEMA,
 			packageName: z.string().describe("The package name of the app to launch"),
 			locale: z.string().optional().describe("Comma-separated BCP 47 locale tags to launch the app with (e.g., fr-FR,en-GB)"),
 		},
@@ -362,7 +380,7 @@ export const createMcpServer = (): McpServer => {
 		"Terminate App",
 		"Stop and terminate an app on mobile device",
 		{
-			device: z.string().describe("The device identifier to use. Use mobile_list_available_devices to find which devices are available to you."),
+			device: DEVICE_SCHEMA,
 			packageName: z.string().describe("The package name of the app to terminate"),
 		},
 		{ destructiveHint: true },
@@ -378,7 +396,7 @@ export const createMcpServer = (): McpServer => {
 		"Install App",
 		"Install an app on mobile device",
 		{
-			device: z.string().describe("The device identifier to use. Use mobile_list_available_devices to find which devices are available to you."),
+			device: DEVICE_SCHEMA,
 			path: z.string().describe("The path to the app file to install. For iOS simulators, provide a .zip file or a .app directory. For Android provide an .apk file. For iOS real devices provide an .ipa file"),
 		},
 		{ destructiveHint: true },
@@ -394,7 +412,7 @@ export const createMcpServer = (): McpServer => {
 		"Uninstall App",
 		"Uninstall an app from mobile device",
 		{
-			device: z.string().describe("The device identifier to use. Use mobile_list_available_devices to find which devices are available to you."),
+			device: DEVICE_SCHEMA,
 			bundle_id: z.string().describe("Bundle identifier (iOS) or package name (Android) of the app to be uninstalled"),
 		},
 		{ destructiveHint: true },
@@ -410,7 +428,7 @@ export const createMcpServer = (): McpServer => {
 		"Get Screen Size",
 		"Get the screen size of the mobile device in pixels",
 		{
-			device: z.string().describe("The device identifier to use. Use mobile_list_available_devices to find which devices are available to you.")
+			device: DEVICE_SCHEMA
 		},
 		{ readOnlyHint: true },
 		async ({ device }) => {
@@ -425,7 +443,7 @@ export const createMcpServer = (): McpServer => {
 		"Click Screen",
 		"Click on the screen at given x,y coordinates. If clicking on an element, use the list_elements_on_screen tool to find the coordinates.",
 		{
-			device: z.string().describe("The device identifier to use. Use mobile_list_available_devices to find which devices are available to you."),
+			device: DEVICE_SCHEMA,
 			x: z.coerce.number().describe("The x coordinate to click on the screen, in pixels"),
 			y: z.coerce.number().describe("The y coordinate to click on the screen, in pixels"),
 		},
@@ -442,7 +460,7 @@ export const createMcpServer = (): McpServer => {
 		"Double Tap Screen",
 		"Double-tap on the screen at given x,y coordinates.",
 		{
-			device: z.string().describe("The device identifier to use. Use mobile_list_available_devices to find which devices are available to you."),
+			device: DEVICE_SCHEMA,
 			x: z.coerce.number().describe("The x coordinate to double-tap, in pixels"),
 			y: z.coerce.number().describe("The y coordinate to double-tap, in pixels"),
 		},
@@ -459,7 +477,7 @@ export const createMcpServer = (): McpServer => {
 		"Long Press Screen",
 		"Long press on the screen at given x,y coordinates. If long pressing on an element, use the list_elements_on_screen tool to find the coordinates.",
 		{
-			device: z.string().describe("The device identifier to use. Use mobile_list_available_devices to find which devices are available to you."),
+			device: DEVICE_SCHEMA,
 			x: z.coerce.number().describe("The x coordinate to long press on the screen, in pixels"),
 			y: z.coerce.number().describe("The y coordinate to long press on the screen, in pixels"),
 			duration: z.coerce.number().min(1).max(10000).optional().describe("Duration of the long press in milliseconds. Defaults to 500ms."),
@@ -478,7 +496,7 @@ export const createMcpServer = (): McpServer => {
 		"List Screen Elements",
 		"List elements on screen and their coordinates, with display text or accessibility label. Do not cache this result.",
 		{
-			device: z.string().describe("The device identifier to use. Use mobile_list_available_devices to find which devices are available to you.")
+			device: DEVICE_SCHEMA
 		},
 		{ readOnlyHint: true },
 		async ({ device }) => {
@@ -517,7 +535,7 @@ export const createMcpServer = (): McpServer => {
 		"Press Button",
 		"Press a button on device",
 		{
-			device: z.string().describe("The device identifier to use. Use mobile_list_available_devices to find which devices are available to you."),
+			device: DEVICE_SCHEMA,
 			button: z.string().describe("The button to press. Supported buttons: BACK (android only), HOME, VOLUME_UP, VOLUME_DOWN, ENTER, DPAD_CENTER (android tv only), DPAD_UP (android tv only), DPAD_DOWN (android tv only), DPAD_LEFT (android tv only), DPAD_RIGHT (android tv only)"),
 		},
 		{ destructiveHint: true },
@@ -533,7 +551,7 @@ export const createMcpServer = (): McpServer => {
 		"Open URL",
 		"Open a URL in browser on device",
 		{
-			device: z.string().describe("The device identifier to use. Use mobile_list_available_devices to find which devices are available to you."),
+			device: DEVICE_SCHEMA,
 			url: z.string().describe("The URL to open"),
 		},
 		{ destructiveHint: true },
@@ -554,7 +572,7 @@ export const createMcpServer = (): McpServer => {
 		"Swipe Screen",
 		"Swipe on the screen",
 		{
-			device: z.string().describe("The device identifier to use. Use mobile_list_available_devices to find which devices are available to you."),
+			device: DEVICE_SCHEMA,
 			direction: z.enum(["up", "down", "left", "right"]).describe("The direction to swipe"),
 			x: z.coerce.number().optional().describe("The x coordinate to start the swipe from, in pixels. If not provided, uses center of screen"),
 			y: z.coerce.number().optional().describe("The y coordinate to start the swipe from, in pixels. If not provided, uses center of screen"),
@@ -582,7 +600,7 @@ export const createMcpServer = (): McpServer => {
 		"Type Text",
 		"Type text into the focused element",
 		{
-			device: z.string().describe("The device identifier to use. Use mobile_list_available_devices to find which devices are available to you."),
+			device: DEVICE_SCHEMA,
 			text: z.string().describe("The text to type"),
 			submit: z.boolean().describe("Whether to submit the text. If true, the text will be submitted as if the user pressed the enter key."),
 		},
@@ -604,7 +622,7 @@ export const createMcpServer = (): McpServer => {
 		"Save Screenshot",
 		"Save a screenshot of the mobile device to a file",
 		{
-			device: z.string().describe("The device identifier to use. Use mobile_list_available_devices to find which devices are available to you."),
+			device: DEVICE_SCHEMA,
 			saveTo: z.string().describe("The path to save the screenshot to. Filename must end with .png, .jpg, or .jpeg"),
 		},
 		{ destructiveHint: true },
@@ -626,7 +644,7 @@ export const createMcpServer = (): McpServer => {
 			title: "Take Screenshot",
 			description: "Take a screenshot of the mobile device. Use this to understand what's on screen, if you need to press an element that is available through view hierarchy then you must list elements on screen instead. Do not cache this result.",
 			inputSchema: {
-				device: z.string().describe("The device identifier to use. Use mobile_list_available_devices to find which devices are available to you.")
+				device: DEVICE_SCHEMA
 			},
 			annotations: {
 				readOnlyHint: true,
@@ -691,7 +709,7 @@ export const createMcpServer = (): McpServer => {
 		"Set Orientation",
 		"Change the screen orientation of the device",
 		{
-			device: z.string().describe("The device identifier to use. Use mobile_list_available_devices to find which devices are available to you."),
+			device: DEVICE_SCHEMA,
 			orientation: z.enum(["portrait", "landscape"]).describe("The desired orientation"),
 		},
 		{ destructiveHint: true },
@@ -707,7 +725,7 @@ export const createMcpServer = (): McpServer => {
 		"Get Orientation",
 		"Get the current screen orientation of the device",
 		{
-			device: z.string().describe("The device identifier to use. Use mobile_list_available_devices to find which devices are available to you.")
+			device: DEVICE_SCHEMA
 		},
 		{ readOnlyHint: true },
 		async ({ device }) => {
@@ -722,7 +740,7 @@ export const createMcpServer = (): McpServer => {
 		"Start Screen Recording",
 		"Start recording the screen of a mobile device. The recording runs in the background until stopped with mobile_stop_screen_recording. Returns the path where the recording will be saved.",
 		{
-			device: z.string().describe("The device identifier to use. Use mobile_list_available_devices to find which devices are available to you."),
+			device: DEVICE_SCHEMA,
 			output: z.string().optional().describe("The file path to save the recording to. Filename must end with .mp4. If not provided, a temporary path will be used."),
 			timeLimit: z.coerce.number().optional().describe("Maximum recording duration in seconds. The recording will stop automatically after this time."),
 		},
@@ -770,7 +788,7 @@ export const createMcpServer = (): McpServer => {
 		"Stop Screen Recording",
 		"Stop an active screen recording on a mobile device. Returns the file path, size, and approximate duration of the recording.",
 		{
-			device: z.string().describe("The device identifier to use. Use mobile_list_available_devices to find which devices are available to you."),
+			device: DEVICE_SCHEMA,
 		},
 		{ destructiveHint: true },
 		async ({ device }) => {
@@ -816,15 +834,12 @@ export const createMcpServer = (): McpServer => {
 		"ATP Dumpsys",
 		"Get current Activity or Window info via dumpsys. Text-based, fast, no screenshot needed.",
 		{
-			device: z.string().describe("The device identifier to use."),
+			device: DEVICE_SCHEMA,
 			type: z.enum(["activity", "window"]).describe("Type of dumpsys query: 'activity' for current foreground Activity, 'window' for current focused window"),
 		},
 		{ readOnlyHint: true },
 		async ({ device, type }) => {
-			const robot = getRobotFromDevice(device);
-			if (!isAndroidRobot(robot)) {
-				throw new ActionableError("dumpsys is only supported on Android devices");
-			}
+			const robot = getAndroidRobotFromDevice(device);
 			if (type === "activity") {
 				return robot.getDumpsysActivity();
 			} else {
@@ -838,7 +853,7 @@ export const createMcpServer = (): McpServer => {
 		"ATP Logcat Start",
 		"Start a logcat streaming session. Collects ATP_ tagged logs in the background. Returns a session ID for reading/stopping.",
 		{
-			device: z.string().describe("The device identifier to use."),
+			device: DEVICE_SCHEMA,
 			tags: z.array(z.string()).default(["ATP_SCREEN", "ATP_RENDER", "ATP_API"])
 				.describe("Logcat tags to filter (default: ATP_SCREEN, ATP_RENDER, ATP_API)"),
 			durationSeconds: z.coerce.number().int().min(10).max(300).default(60)
@@ -846,10 +861,7 @@ export const createMcpServer = (): McpServer => {
 		},
 		{ readOnlyHint: true },
 		async ({ device, tags, durationSeconds }) => {
-			const robot = getRobotFromDevice(device);
-			if (!isAndroidRobot(robot)) {
-				throw new ActionableError("logcat is only supported on Android devices");
-			}
+			const robot = getAndroidRobotFromDevice(device);
 			const session = robot.startLogcat(tags, durationSeconds);
 			return JSON.stringify({
 				sessionId: session.id,
@@ -865,17 +877,14 @@ export const createMcpServer = (): McpServer => {
 		"ATP Logcat Read",
 		"Read collected log lines from an active logcat session. Use 'since' for incremental reads.",
 		{
-			device: z.string().describe("The device identifier to use."),
+			device: DEVICE_SCHEMA,
 			sessionId: z.string().describe("Session ID returned by atp_logcat_start"),
 			since: z.coerce.number().int().min(0).optional()
 				.describe("Return only lines after this index (for incremental reads). Omit to get all lines."),
 		},
 		{ readOnlyHint: true },
 		async ({ device, sessionId, since }) => {
-			const robot = getRobotFromDevice(device);
-			if (!isAndroidRobot(robot)) {
-				throw new ActionableError("logcat is only supported on Android devices");
-			}
+			const robot = getAndroidRobotFromDevice(device);
 			// Verify session belongs to this device
 			const session = AndroidRobot.getSession(sessionId);
 			if (session && session.deviceId !== device) {
@@ -896,15 +905,12 @@ export const createMcpServer = (): McpServer => {
 		"ATP Logcat Stop",
 		"Stop an active logcat streaming session and return summary stats.",
 		{
-			device: z.string().describe("The device identifier to use."),
+			device: DEVICE_SCHEMA,
 			sessionId: z.string().describe("Session ID returned by atp_logcat_start"),
 		},
 		{ destructiveHint: true },
 		async ({ device, sessionId }) => {
-			const robot = getRobotFromDevice(device);
-			if (!isAndroidRobot(robot)) {
-				throw new ActionableError("logcat is only supported on Android devices");
-			}
+			const robot = getAndroidRobotFromDevice(device);
 			// Verify session belongs to this device (matches atp_logcat_read)
 			const session = AndroidRobot.getSession(sessionId);
 			if (session && session.deviceId !== device) {
@@ -928,7 +934,7 @@ export const createMcpServer = (): McpServer => {
 		"ATP Run Step",
 		"Execute a single test step using the 3-tier strategy (text → uiautomator → screenshot). Automatically falls back through tiers when a tier cannot determine the result.",
 		{
-			device: z.string().describe("The device identifier to use."),
+			device: DEVICE_SCHEMA,
 			action: z.string().describe("The action to perform (e.g., 'tap login button', 'enter email')"),
 			verification: z.string().describe("What to verify after the action (e.g., 'home screen appears')"),
 			expectedLogcat: z.array(z.object({
@@ -947,11 +953,7 @@ export const createMcpServer = (): McpServer => {
 		},
 		{ destructiveHint: true },
 		async ({ device, action, verification, expectedLogcat, tapTarget, skipVerification }) => {
-			// Ensure device is Android
-			const robot = getRobotFromDevice(device);
-			if (!isAndroidRobot(robot)) {
-				throw new ActionableError("atp_run_step is only supported on Android devices");
-			}
+			const robot = getAndroidRobotFromDevice(device);
 
 			// Auto-start a logcat session if expectedLogcat is provided and none
 			// is live. Removes the "model forgot atp_logcat_start" foot-gun (C8).

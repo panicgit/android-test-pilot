@@ -1,0 +1,34 @@
+{
+  "name": "tier-2-fallback",
+  "description": "Steps where TextTier falls back because logcat isn't instrumented; UiAutomatorTier handles tap via resource-id",
+  "steps": [
+    {
+      "action": "tap settings icon (no ATP_* instrumentation)",
+      "verification": "settings screen",
+      "tapTarget": { "resourceId": "ic_settings" },
+      "expectedLogcat": [
+        { "tag": "ATP_SCREEN", "pattern": "enter: SettingsActivity" }
+      ],
+      "mockLogcatLines": [],
+      "mockDumpsysActivity": "{\"resumed\":\"mResumedActivity: ActivityRecord{... HomeActivity}\",\"focused\":null,\"topResumed\":null}"
+    },
+    {
+      "action": "tap logout (missing ATP_RENDER instrumentation)",
+      "verification": "confirmation dialog",
+      "tapTarget": { "resourceId": "btn_logout" },
+      "expectedLogcat": [
+        { "tag": "ATP_RENDER", "pattern": "confirmDialog=true" }
+      ],
+      "mockLogcatLines": [],
+      "mockDumpsysActivity": "{\"resumed\":\"mResumedActivity: ActivityRecord{... SettingsActivity}\",\"focused\":null,\"topResumed\":null}"
+    },
+    {
+      "action": "tap confirm button by coords",
+      "verification": "dialog dismissed",
+      "tapTarget": { "x": 540, "y": 960 },
+      "expectedLogcat": [],
+      "mockLogcatLines": [],
+      "mockDumpsysActivity": "{\"resumed\":\"mResumedActivity: ActivityRecord{... SettingsActivity}\",\"focused\":null,\"topResumed\":null}"
+    }
+  ]
+}

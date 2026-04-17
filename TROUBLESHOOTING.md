@@ -66,8 +66,14 @@ Android emulator IDs survive restarts but can shift if multiple AVDs run.
 - Run `/atp:check-logs` to audit ATP_* coverage.
 - In Compose UIs, add `Modifier.semantics { testTagsAsResourceId = true;
   testTag = "btn_login" }` to elements you want to target.
-- For release builds, ensure `ATP_*` tags are not stripped by R8/Proguard
-  (see [docs/instrumentation-guide.md](docs/instrumentation-guide.md)).
+- For release builds, ensure `ATP_*` tags are not stripped by R8/Proguard.
+  Quick recipe: gate each `Log.d("ATP_*", ...)` call with
+  `if (BuildConfig.DEBUG || BuildConfig.ATP_ENABLED)` and add a keep
+  rule to your `proguard-rules.pro`:
+  ```
+  -keep class ** { void d(java.lang.String, java.lang.String); }
+  ```
+  A full instrumentation guide is planned for a future release.
 
 ### `Logcat session "XYZ" not found. It may have expired or been stopped`
 **Cause**: The session timed out (default 60s, max 300s), or the device

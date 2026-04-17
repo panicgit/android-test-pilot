@@ -41,14 +41,19 @@ export class ScreenshotTier extends AbstractTier {
 			let mimeType = "image/png";
 			const originalBytes = screenshot.length;
 
-			if (isScalingAvailable()) {
+			if (isScalingAvailable() && originalBytes > 0) {
 				try {
-					screenshot = Image.fromBuffer(screenshot)
+					const resized = Image.fromBuffer(screenshot)
 						.resize(SCREENSHOT_TARGET_WIDTH)
 						.jpeg({ quality: SCREENSHOT_JPEG_QUALITY })
 						.toBuffer();
-					mimeType = "image/jpeg";
-					trace(`ScreenshotTier resize: ${originalBytes} -> ${screenshot.length} bytes (${SCREENSHOT_TARGET_WIDTH}px JPEG q${SCREENSHOT_JPEG_QUALITY})`);
+					if (resized && resized.length > 0) {
+						screenshot = resized;
+						mimeType = "image/jpeg";
+						trace(`ScreenshotTier resize: ${originalBytes} -> ${screenshot.length} bytes (${SCREENSHOT_TARGET_WIDTH}px JPEG q${SCREENSHOT_JPEG_QUALITY})`);
+					} else {
+						trace(`ScreenshotTier resize returned empty buffer, sending raw PNG`);
+					}
 				} catch (err: unknown) {
 					const message = err instanceof Error ? err.message : String(err);
 					trace(`ScreenshotTier resize failed, sending raw PNG: ${message}`);

@@ -1,6 +1,6 @@
 {
   "version": "0.1.0",
-  "timestamp": "2026-04-16T15:59:38.035Z",
+  "timestamp": "2026-04-17T07:08:07.827Z",
   "scenarios": [
     {
       "name": "login",
@@ -19,7 +19,7 @@
           "action": "launch app",
           "tier": "text",
           "status": "SUCCESS",
-          "durationMs": 1
+          "durationMs": 0
         },
         {
           "stepIndex": 1,
@@ -50,12 +50,69 @@
           "durationMs": 0
         }
       ]
+    },
+    {
+      "name": "tier-2-fallback",
+      "totalSteps": 3,
+      "tierBreakdown": {
+        "uiautomator": 2,
+        "screenshot": 1
+      },
+      "tier1Ratio": 0,
+      "tier2Ratio": 0.6666666666666666,
+      "tier3Ratio": 0.3333333333333333,
+      "avgStepLatencyMs": 5,
+      "failedSteps": 0,
+      "stepResults": [
+        {
+          "stepIndex": 0,
+          "action": "tap settings icon (no ATP_* instrumentation)",
+          "tier": "uiautomator",
+          "status": "SUCCESS",
+          "durationMs": 0
+        },
+        {
+          "stepIndex": 1,
+          "action": "tap logout (missing ATP_RENDER instrumentation)",
+          "tier": "uiautomator",
+          "status": "SUCCESS",
+          "durationMs": 1
+        },
+        {
+          "stepIndex": 2,
+          "action": "tap confirm button by coords",
+          "tier": "screenshot",
+          "status": "SUCCESS",
+          "durationMs": 15
+        }
+      ]
+    },
+    {
+      "name": "tier-3-fallback",
+      "totalSteps": 1,
+      "tierBreakdown": {
+        "screenshot": 1
+      },
+      "tier1Ratio": 0,
+      "tier2Ratio": 0,
+      "tier3Ratio": 1,
+      "avgStepLatencyMs": 10,
+      "failedSteps": 0,
+      "stepResults": [
+        {
+          "stepIndex": 0,
+          "action": "verify splash image rendered",
+          "tier": "screenshot",
+          "status": "SUCCESS",
+          "durationMs": 10
+        }
+      ]
     }
   ],
   "totals": {
-    "tier1Ratio": 1,
-    "tier2Ratio": 0,
-    "tier3Ratio": 0,
-    "avgLatencyMs": 0
+    "tier1Ratio": 0.5555555555555556,
+    "tier2Ratio": 0.2222222222222222,
+    "tier3Ratio": 0.2222222222222222,
+    "avgLatencyMs": 3
   }
 }

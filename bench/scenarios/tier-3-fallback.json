@@ -1,0 +1,13 @@
+{
+  "name": "tier-3-fallback",
+  "description": "Step that requires visual verification (image rendering) with no resource-id and no ATP logs",
+  "steps": [
+    {
+      "action": "verify splash image rendered",
+      "verification": "brand image visible at center",
+      "expectedLogcat": [],
+      "mockLogcatLines": [],
+      "mockDumpsysActivity": "{\"resumed\":\"mResumedActivity: ActivityRecord{... SplashActivity}\",\"focused\":null,\"topResumed\":null}"
+    }
+  ]
+}

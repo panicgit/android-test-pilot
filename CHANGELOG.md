@@ -3,7 +3,67 @@
 All notable changes are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased] — Sprint 1 (improvement/sprint-0-1)
+## [Unreleased]
+
+### Sprint 2/3 (improvement/sprint-2-3)
+
+#### Code quality
+- **T2** — all `catch (error: any)` replaced with `catch (error: unknown)`
+  and `error instanceof Error` narrowing at ATP-owned sites. Extracts
+  `formatAdbError()` helper for execFileSync throws. iOS-side files kept
+  untouched to minimize upstream mobile-mcp diff.
+- **T6** — `posthog(...).then()` replaced with `void posthog(...)` at 3
+  sites; `main().then()` replaced with `.catch(exit(1))` so unhandled
+  rejections no longer silently crash.
+- **T7** — duplicated `device: z.string().describe(...)` Zod schema
+  consolidated into a single `DEVICE_SCHEMA` constant (25 occurrences).
+- **T8** — `getAndroidRobotFromDevice(deviceId)` helper replaces the
+  `getRobotFromDevice + isAndroidRobot` guard at 5 ATP tool callbacks.
+- **T4** — `TierResult` converted to a discriminated union keyed by
+  `status`, with `fallbackHint`/`error`/`verification` required on the
+  respective variants. Wire format unchanged via `flattenTierResult()`
+  helper.
+
+#### Reliability
+- **H1** — SIGTERM/SIGINT graceful drain — each logcat child is signalled
+  then awaited (2s bound) so the tail of the log buffer is flushed
+  before exit.
+
+#### Performance
+- **P1** — removed the ADB `echo ping` round-trip from every tier's
+  `canHandle()`; saves ~150-900ms per `atp_run_step` call.
+- **P7** — memoized `isScalingAvailable()`, `isSipsInstalled()`,
+  `isImageMagickInstalled()` probes.
+- **P8** — `ScreenshotTier` now downscales to 540px JPEG q75 before
+  base64 encoding. ~15-30× vision-token cost reduction on Tier-3
+  fallback steps when scaling tools are present.
+- **P9** — `TextTier` pre-compiles all `expectedLogcat` regexes once per
+  step instead of per log-line scan.
+
+#### Security
+- **S8** — `atp_logcat_read` redacts obvious secrets (Bearer tokens,
+  `token|password|api_key|auth|session_id|cookie` values, emails, card
+  numbers) before returning lines to the MCP client. Opt out with
+  `MOBILEMCP_DISABLE_REDACTION=1`.
+
+#### Documentation
+- **D3** — `TROUBLESHOOTING.md` — first-run and live-testing failure
+  modes with copy-paste fixes, linked from README.
+- **D6** — `docs/architecture.md` with Mermaid flowchart of tier
+  dispatch, result type contract, and logcat session lifecycle.
+- **D8** — `ActionableError` messages for logcat session-not-found now
+  include an explicit "Next step:" hint.
+
+#### CI/CD
+- **O6** — `.github/workflows/ci.yml` (test matrix Node 18/20/22 ×
+  Ubuntu/macOS, bench regression gate) and `release.yml` (tag-push →
+  npm publish with provenance).
+- Issue templates (bug, feature) and PR template.
+
+### Tests
+- 28 tests pass (up from 22). New: `test/redaction.test.ts` (6 cases).
+
+### Sprint 1 (merged to main)
 
 ### Fixed (correctness)
 - **C2** — `TextTier` no longer returns `SUCCESS` when `expectedLogcat` is

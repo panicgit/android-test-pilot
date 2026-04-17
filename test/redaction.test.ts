@@ -53,6 +53,29 @@ describe("redactLogcatLines (S8)", () => {
 		}
 	});
 
+	it("strips Basic auth headers (SR-1)", () => {
+		const { lines, redactedCount } = redactLogcatLines([
+			"ATP_API Authorization: Basic dXNlcjpwYXNzd29yZA==",
+		]);
+		assert.ok(lines[0].includes("[REDACTED]"));
+		assert.ok(!lines[0].includes("dXNlcjpwYXNzd29yZA=="));
+		assert.strictEqual(redactedCount, 1);
+	});
+
+	it("strips JSON-encoded secrets without leaking the value (SR-3)", () => {
+		const { lines } = redactLogcatLines([
+			'ATP_API response: {"password":"hunter2","status":200}',
+			"ATP_API response: {'token':'abc-def-ghi-123'}",
+			'ATP_API response: {"api_key":"sk-live-12345abcde"}',
+		]);
+		for (const line of lines) {
+			assert.ok(!line.includes("hunter2"), `leaked: ${line}`);
+			assert.ok(!line.includes("abc-def-ghi-123"), `leaked: ${line}`);
+			assert.ok(!line.includes("sk-live-12345abcde"), `leaked: ${line}`);
+			assert.ok(line.includes("[REDACTED]"));
+		}
+	});
+
 	it("leaves regular logcat lines untouched", () => {
 		const { lines, redactedCount } = redactLogcatLines([
 			"ATP_SCREEN enter: LoginActivity",

@@ -134,9 +134,18 @@ const getAdbPath = (): string => {
  * leak a secret. See S8 in IMPROVEMENT_PLAN.md.
  */
 const REDACTION_PATTERNS: Array<{ pattern: RegExp; replacement: string }> = [
-	{ pattern: /Bearer\s+[A-Za-z0-9._\-+/=]{8,}/gi, replacement: "Bearer [REDACTED]" },
-	{ pattern: /(token|password|passwd|secret|api[_-]?key|auth|authorization|refresh[_-]?token|access[_-]?token|session[_-]?id|cookie)\s*[:=]\s*([^\s,;"}]+)/gi, replacement: "$1=[REDACTED]" },
+	// Authorization: Bearer <token>  — covers JWTs and opaque tokens.
+	{ pattern: /Bearer\s+[A-Za-z0-9._~%:\-+/=]{8,}/gi, replacement: "Bearer [REDACTED]" },
+	// Authorization: Basic <base64>  (SR-1).
+	{ pattern: /Basic\s+[A-Za-z0-9+/=]{8,}/gi, replacement: "Basic [REDACTED]" },
+	// key=value / key: value / "key":"value" — matches plain, single-quoted,
+	// and double-quoted variants. Consumes any surrounding quotes around the
+	// key AND the value so JSON-encoded payloads like `"password":"hunter2"`
+	// don't leak either half after replacement (SR-3).
+	{ pattern: /["']?(token|password|passwd|secret|api[_-]?key|auth|authorization|refresh[_-]?token|access[_-]?token|session[_-]?id|cookie)["']?\s*[:=]\s*["']?[^"'\s,;}\]]+["']?/gi, replacement: "$1=[REDACTED]" },
+	// Email addresses.
 	{ pattern: /[\w.+\-]+@[\w\-]+\.[A-Za-z]{2,}/g, replacement: "[EMAIL-REDACTED]" },
+	// Card-shaped digit runs — 13-19 digits with optional space/dash separators.
 	{ pattern: /\b(?:\d[ -]?){13,19}\b/g, replacement: "[CARD-REDACTED]" },
 ];
 

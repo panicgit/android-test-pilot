@@ -219,6 +219,17 @@ class MyCustomTier extends AbstractTier {
 }
 ```
 
+## Troubleshooting
+
+See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for common failure modes —
+`adb not found`, empty device list, every step falling through to the
+screenshot tier, missing `.claude/app-map/*` artifacts, and more.
+
+## Architecture
+
+See [docs/architecture.md](docs/architecture.md) for the tier-dispatch
+flowchart, result type contract, and logcat session lifecycle.
+
 ## Built On
 
 Forked from [mobile-mcp](https://github.com/mobile-next/mobile-mcp) (Apache-2.0), specialized for Android test automation.
@@ -231,4 +242,5 @@ Forked from [mobile-mcp](https://github.com/mobile-next/mobile-mcp) (Apache-2.0)
 
 ## License
 
-Apache-2.0
+Apache-2.0 — see [LICENSE](LICENSE) and [NOTICE](NOTICE) for upstream
+attribution.

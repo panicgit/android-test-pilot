@@ -783,7 +783,7 @@ export class AndroidRobot implements Robot {
 	public readLogcat(sessionId: string, since?: number): { lines: string[]; lineCount: number; redactedCount: number } {
 		const session = activeSessions.get(sessionId);
 		if (!session) {
-			throw new ActionableError(`Logcat session "${sessionId}" not found. It may have expired or been stopped.`);
+			throw new ActionableError(`Logcat session "${sessionId}" not found. It may have expired or been stopped. Next step: call atp_logcat_start to begin a fresh session.`);
 		}
 
 		const startIndex = Math.max(0, since ?? 0);
@@ -802,7 +802,7 @@ export class AndroidRobot implements Robot {
 	public stopLogcat(sessionId: string): { totalLines: number; durationMs: number; bufferBytes: number; bytesDropped: number } {
 		const session = activeSessions.get(sessionId);
 		if (!session) {
-			throw new ActionableError(`Logcat session "${sessionId}" not found.`);
+			throw new ActionableError(`Logcat session "${sessionId}" not found. It may have already been stopped.`);
 		}
 
 		clearTimeout(session.timer);

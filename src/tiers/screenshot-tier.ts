@@ -27,10 +27,10 @@ export class ScreenshotTier extends AbstractTier {
 	readonly name = "screenshot";
 	readonly priority = 3;
 
-	async canHandle(): Promise<boolean> {
-		// Screenshot tier is always "handleable" — if it can't actually
-		// capture, execute() returns ERROR and the runner reports it (P1).
-		return true;
+	async canHandle(context: TierContext): Promise<boolean> {
+		// Screenshot tier is always "handleable" for the verify phase. It
+		// cannot drive the UI, so skip the act phase (A5).
+		return context.phase !== "act";
 	}
 
 	async execute(context: TierContext): Promise<TierResult> {

@@ -73,6 +73,21 @@ export interface AppMap {
 	viewStateMap: ViewStateScreen[];
 }
 
+/**
+ * Which half of a test step the tier chain is working on.
+ *
+ * - `act`:    perform the action (tap / swipe / launch). Tiers that cannot
+ *             drive UI (e.g. TextTier) must FALLBACK.
+ * - `verify`: check the post-condition against expectedLogcat / observed
+ *             state. Tiers that only act (e.g. UiAutomatorTier when there
+ *             is no observation contract) must FALLBACK.
+ *
+ * Splitting act from verify fixes A5 — previously a single-tier execution
+ * could "succeed" by tapping, without ever verifying that the action
+ * produced the expected state.
+ */
+export type TierPhase = "act" | "verify";
+
 /** Context passed to each Tier's canHandle() and execute() */
 export interface TierContext {
 	/** ADB device ID */
@@ -83,6 +98,8 @@ export interface TierContext {
 	appMap: AppMap;
 	/** Result from the previous Tier (if any, on FALLBACK) */
 	previousTierResult?: TierResult;
+	/** Which half of the step is being executed. Defaults to "verify". */
+	phase?: TierPhase;
 }
 
 /**

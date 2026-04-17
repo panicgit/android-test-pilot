@@ -993,9 +993,44 @@ export const createMcpServer = (): McpServer => {
 				appMap,
 			};
 
-			const result = await runner.run(context);
+			// A5 — split action from verification.
+			// If the step declares both tapTarget AND expectedLogcat, we first
+			// run the act phase (UiAutomatorTier performs the tap), wait a
+			// short settle window for logs to arrive, then run the verify
+			// phase (TextTier matches expectedLogcat; ScreenshotTier is the
+			// last-resort visual fallback).
+			const hasAction = !!tapTarget;
+			const hasVerification = !!(expectedLogcat && expectedLogcat.length > 0);
+
+			if (hasAction && hasVerification) {
+				const actResult = await runner.run({ ...context, phase: "act" });
+				if (actResult.status === "FAIL" || actResult.status === "ERROR") {
+					return JSON.stringify({
+						phase: "act",
+						...flattenTierResult(actResult),
+						appMapWarnings: appMapWarnings.length > 0 ? appMapWarnings : undefined,
+					});
+				}
+				// Allow the app a moment to render and emit logs.
+				await new Promise(resolve => setTimeout(resolve, 300));
+				const verifyResult = await runner.run({ ...context, phase: "verify" });
+				return JSON.stringify({
+					actResult: flattenTierResult(actResult),
+					verifyResult: flattenTierResult(verifyResult),
+					// Legacy fields — mirror the verify result so older consumers
+					// that read `tier`/`status` at the top level continue to work.
+					...flattenTierResult(verifyResult),
+					appMapWarnings: appMapWarnings.length > 0 ? appMapWarnings : undefined,
+				});
+			}
+
+			// Single-phase flow. Default phase is verify; if the step is a
+			// pure action (tapTarget with no expectedLogcat), run act.
+			const phase: "act" | "verify" = hasAction && !hasVerification ? "act" : "verify";
+			const result = await runner.run({ ...context, phase });
 
 			return JSON.stringify({
+				phase,
 				...flattenTierResult(result),
 				appMapWarnings: appMapWarnings.length > 0 ? appMapWarnings : undefined,
 			});

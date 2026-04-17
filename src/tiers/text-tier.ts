@@ -19,6 +19,8 @@ export class TextTier extends AbstractTier {
 	readonly priority = 1;
 
 	async canHandle(context: TierContext): Promise<boolean> {
+		// TextTier cannot drive the UI — skip the act phase entirely (A5).
+		if (context.phase === "act") return false;
 		// Defer reachability to execute() — getDumpsysActivity will throw fast
 		// on an unreachable device and the tier will FALLBACK. Skipping a
 		// dedicated ADB ping saves one round-trip per step (P1).

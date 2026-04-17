@@ -27,6 +27,7 @@ export class UiAutomatorTier extends AbstractTier {
 
 	async execute(context: TierContext): Promise<TierResult> {
 		const robot = this.getAndroidRobot(context);
+		const phase = context.phase ?? "verify";
 
 		// 1. Dump UI hierarchy
 		const elements = await robot.getElementsOnScreen();
@@ -39,9 +40,19 @@ export class UiAutomatorTier extends AbstractTier {
 			};
 		}
 
-		// 2. If there's a tap target, find and tap it
 		const tapTarget = context.step.tapTarget;
-		if (tapTarget) {
+
+		// ── ACT PHASE ──────────────────────────────────────────────
+		// Only perform the tap; do not claim verification. The orchestrator
+		// runs a separate verify phase afterwards to check expectedLogcat (A5).
+		if (phase === "act") {
+			if (!tapTarget) {
+				return {
+					tier: this.name,
+					status: "FALLBACK",
+					fallbackHint: "Act phase requested but step has no tapTarget",
+				};
+			}
 			if (tapTarget.resourceId) {
 				const target = elements.find(el => el.identifier === tapTarget.resourceId);
 				if (target) {
@@ -55,7 +66,6 @@ export class UiAutomatorTier extends AbstractTier {
 						rawData: JSON.stringify({ target, elementsCount: elements.length }),
 					};
 				}
-				// resource-id not found
 				return {
 					tier: this.name,
 					status: "FAIL",
@@ -68,7 +78,6 @@ export class UiAutomatorTier extends AbstractTier {
 					rawData: JSON.stringify({ elementsCount: elements.length }),
 				};
 			}
-
 			if (tapTarget.coordinates) {
 				await robot.tap(tapTarget.coordinates.x, tapTarget.coordinates.y);
 				return {
@@ -77,9 +86,27 @@ export class UiAutomatorTier extends AbstractTier {
 					observation: `Tapped coordinates (${tapTarget.coordinates.x}, ${tapTarget.coordinates.y})`,
 				};
 			}
+			return {
+				tier: this.name,
+				status: "FALLBACK",
+				fallbackHint: "tapTarget provided but neither resourceId nor coordinates resolved",
+			};
 		}
 
-		// 3. No tap target — return UI hierarchy as observation
+		// ── VERIFY PHASE ───────────────────────────────────────────
+		// No tap — just report UI state for downstream consumption or to
+		// confirm the expected element appeared. If the step had a tapTarget
+		// AND expectedLogcat, we FALLBACK to let TextTier make the call on
+		// logcat evidence (A5) — returning SUCCESS here would be the old bug.
+		if (tapTarget && (context.step.expectedLogcat?.length ?? 0) > 0) {
+			return {
+				tier: this.name,
+				status: "FALLBACK",
+				fallbackHint: "Step declares expectedLogcat — defer verification to TextTier",
+				observation: `UI hierarchy: ${elements.length} elements found`,
+			};
+		}
+
 		const summary = elements.slice(0, 20).map(el => ({
 			type: el.type,
 			text: el.text,

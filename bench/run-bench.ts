@@ -91,7 +91,9 @@ const installMockRobot = (deviceId: string, step: BenchStep): void => {
 	};
 
 	proto.getElementsOnScreen = async function () {
-		// Return one element matching the tapTarget.resourceId if present
+		// Return one element matching the tapTarget.resourceId if present;
+		// otherwise a single generic element so the hierarchy isn't empty
+		// (a real device's hierarchy is never empty).
 		if (step.tapTarget?.resourceId) {
 			return [{
 				type: "Button",
@@ -101,7 +103,13 @@ const installMockRobot = (deviceId: string, step: BenchStep): void => {
 				rect: { x: 100, y: 200, width: 200, height: 80 },
 			}];
 		}
-		return [];
+		return [{
+			type: "FrameLayout",
+			text: "",
+			label: "",
+			identifier: "",
+			rect: { x: 0, y: 0, width: 1080, height: 2340 },
+		}];
 	};
 
 	proto.tap = async function () { /* mock */ };

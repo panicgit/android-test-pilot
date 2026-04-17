@@ -5,6 +5,29 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+### Distribution pivot
+**Breaking** — android-test-pilot is no longer published to npm.
+Distribution is exclusively via the Claude Code marketplace
+(`panicgit/android-test-pilot`). `package.json` `bin`, `main`,
+`homepage`, `bugs`, `repository`, `engines.npm`, and `files` fields
+removed; `.npmignore` removed; `release.yml` (npm publish workflow)
+removed. The `prepare` script still builds `lib/` on `npm install` so
+marketplace installs work out-of-the-box.
+
+### Review follow-up (on top of Sprint 2/3)
+- Completed T2 and T6 — `mobile_take_screenshot` no longer uses
+  `posthog().then()`; remaining `catch (error)` bindings in android.ts
+  stripped to bare `catch {}`.
+- **SR-1 + SR-3** redaction fixes — Basic auth stripped, JSON-encoded
+  values (`"password":"hunter2"`) no longer leak the trailing value
+  fragment.
+- Bench harness no longer a tautology — adds `tier-2-fallback.json` and
+  `tier-3-fallback.json`; realistic baseline is tier1=0.56, tier2=0.22,
+  tier3=0.22 (up from a hand-crafted 1.00/0.00/0.00).
+- `ScreenshotTier` resize is resilient to empty buffers.
+- Fixed dead link in TROUBLESHOOTING.md to the planned instrumentation
+  guide; inlined the short Proguard recipe instead.
+
 ### Sprint 2/3 (improvement/sprint-2-3)
 
 #### Code quality

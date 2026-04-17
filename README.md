@@ -78,7 +78,7 @@ Reads a markdown scenario file and runs tests using a 3-tier strategy.
 - Claude Code
 - Android device or emulator (USB debugging enabled)
 
-### Option A: Plugin Install (recommended)
+### Plugin Install (Claude Code marketplace)
 
 Install as a Claude Code plugin — MCP server + slash commands all at once:
 
@@ -94,23 +94,10 @@ When prompted, add the marketplace: `panicgit/android-test-pilot`, then:
 
 Done. All `/atp:*` commands and MCP tools are ready.
 
-### Option B: Manual Install
-
-```bash
-# 1. Clone and build
-git clone https://github.com/panicgit/android-test-pilot
-cd android-test-pilot
-npm install
-npm run build
-
-# 2. Register MCP server
-claude mcp add --transport stdio --scope project android-test-pilot \
-  -- npx -y @panicgit/android-test-pilot
-
-# 3. Copy slash commands to your project
-cp -r /path/to/android-test-pilot/.claude/skills/atp \
-      /path/to/my-android-app/.claude/skills/atp
-```
+android-test-pilot is distributed **exclusively** via the Claude Code
+marketplace. There is no npm package. For local development on the tool
+itself, clone the repo and run `npm install` — the `prepare` script
+builds `lib/` automatically.
 
 ## Usage
 

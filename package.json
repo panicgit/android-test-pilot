@@ -1,22 +1,10 @@
 {
-  "name": "@panicgit/android-test-pilot",
+  "name": "android-test-pilot",
   "version": "0.1.0",
-  "description": "Android app test automation tool powered by Claude Code — static analysis, log coverage, and device testing with 3-tier strategy",
-  "main": "index.js",
-  "bin": {
-    "android-test-pilot": "lib/index.js"
-  },
-  "homepage": "https://github.com/panicgit/android-test-pilot#readme",
-  "bugs": {
-    "url": "https://github.com/panicgit/android-test-pilot/issues"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/panicgit/android-test-pilot.git"
-  },
+  "description": "Android app test automation tool powered by Claude Code — static analysis, log coverage, and device testing with 3-tier strategy. Distributed as a Claude Code marketplace plugin.",
+  "private": true,
   "engines": {
-    "node": ">=18",
-    "npm": ">=9"
+    "node": ">=18"
   },
   "scripts": {
     "build": "tsc && chmod 755 lib/index.js",
@@ -52,16 +40,5 @@
     "@types/node": "^22.0.0",
     "@types/express": "^5.0.3",
     "typescript": "^5.8.0"
-  },
-  "files": [
-    "lib",
-    "skills",
-    "templates",
-    ".claude-plugin",
-    "LICENSE",
-    "NOTICE",
-    "CHANGELOG.md",
-    "README.md",
-    "README.ko.md"
-  ]
+  }
 }

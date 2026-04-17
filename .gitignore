@@ -2,3 +2,7 @@ node_modules/
 lib/
 *.tsbuildinfo
 .DS_Store
+
+# Local-only state (dev environment)
+.claude/settings.local.json
+.omc/

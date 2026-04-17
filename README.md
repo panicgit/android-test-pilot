@@ -206,16 +206,16 @@ class MyCustomTier extends AbstractTier {
 }
 ```
 
-## Troubleshooting
+## Documentation
 
-See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for common failure modes —
-`adb not found`, empty device list, every step falling through to the
-screenshot tier, missing `.claude/app-map/*` artifacts, and more.
-
-## Architecture
-
-See [docs/architecture.md](docs/architecture.md) for the tier-dispatch
-flowchart, result type contract, and logcat session lifecycle.
+- [TROUBLESHOOTING.md](TROUBLESHOOTING.md) — common failure modes
+  (`adb not found`, empty device list, every step falling through to
+  screenshot, missing `.claude/app-map/*`, SSE auth refusal, etc.).
+- [docs/architecture.md](docs/architecture.md) — tier-dispatch
+  flowchart, result type contract, logcat session lifecycle.
+- [docs/instrumentation-guide.md](docs/instrumentation-guide.md) —
+  how to add `ATP_*` logs to a Kotlin/Compose codebase, Proguard keep
+  rules, Timber adapter, avoiding the recomposition storm.
 
 ## Built On
 

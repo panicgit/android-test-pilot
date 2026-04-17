@@ -39,17 +39,47 @@ const MAX_SESSIONS_PER_DEVICE = 3;
 /** Global cap on logcat sessions across all devices (S2). */
 const MAX_GLOBAL_SESSIONS = 50;
 
-/** Clean up all active logcat sessions (called on process exit) */
-const cleanupAllSessions = () => {
+/**
+ * Best-effort synchronous cleanup — used on 'exit' where the process is
+ * already tearing down and we cannot await anything.
+ */
+const cleanupAllSessionsSync = (): void => {
 	for (const [, session] of activeSessions) {
 		clearTimeout(session.timer);
 		session.process.kill("SIGTERM");
 	}
 	activeSessions.clear();
 };
-process.on("exit", cleanupAllSessions);
-process.on("SIGTERM", () => { cleanupAllSessions(); process.exit(0); });
-process.on("SIGINT", () => { cleanupAllSessions(); process.exit(0); });
+
+/**
+ * Graceful cleanup — signal each child then wait (bounded) for it to exit so
+ * the last batch of logcat lines can drain. Used on SIGTERM/SIGINT where the
+ * server is alive long enough to await. See H1 in IMPROVEMENT_PLAN.md.
+ */
+const cleanupAllSessionsGraceful = async (drainTimeoutMs = 2000): Promise<void> => {
+	const pending: Promise<void>[] = [];
+	for (const [, session] of activeSessions) {
+		clearTimeout(session.timer);
+		session.process.kill("SIGTERM");
+		pending.push(new Promise<void>(resolve => {
+			const timer = setTimeout(resolve, drainTimeoutMs);
+			session.process.once("exit", () => {
+				clearTimeout(timer);
+				resolve();
+			});
+		}));
+	}
+	await Promise.all(pending);
+	activeSessions.clear();
+};
+
+process.on("exit", cleanupAllSessionsSync);
+process.on("SIGTERM", () => {
+	cleanupAllSessionsGraceful().finally(() => process.exit(0));
+});
+process.on("SIGINT", () => {
+	cleanupAllSessionsGraceful().finally(() => process.exit(0));
+});
 
 export interface AndroidDevice {
 	deviceId: string;

@@ -263,14 +263,14 @@ export class AndroidRobot implements Robot {
 			validateLocale(locale);
 			try {
 				this.silentAdb("shell", "cmd", "locale", "set-app-locales", packageName, "--locales", locale);
-			} catch (error) {
+			} catch {
 				// set-app-locales requires Android 13+ (API 33), silently ignore on older versions
 			}
 		}
 
 		try {
 			this.silentAdb("shell", "monkey", "-p", packageName, "-c", "android.intent.category.LAUNCHER", "1");
-		} catch (error) {
+		} catch {
 			throw new ActionableError(`Failed launching app with package name "${packageName}", please make sure it exists`);
 		}
 	}
@@ -388,7 +388,7 @@ export class AndroidRobot implements Robot {
 					return displayId;
 				}
 			}
-		} catch (error) {
+		} catch {
 			// cmd display get-displays not available on this device
 		}
 
@@ -413,7 +413,7 @@ export class AndroidRobot implements Robot {
 			if (displayStateMatch) {
 				return displayStateMatch[1];
 			}
-		} catch (error) {
+		} catch {
 			// dumpsys display also failed
 		}
 
@@ -869,7 +869,7 @@ export class AndroidDeviceManager {
 				return "tv";
 			}
 			return "mobile";
-		} catch (error) {
+		} catch {
 			// Fallback to mobile if we cannot determine device type
 			return "mobile";
 		}
@@ -881,7 +881,7 @@ export class AndroidDeviceManager {
 				timeout: 5000,
 			}).toString().trim();
 			return output;
-		} catch (error) {
+		} catch {
 			return "unknown";
 		}
 	}
@@ -903,7 +903,7 @@ export class AndroidDeviceManager {
 				timeout: 5000,
 			}).toString().trim();
 			return output;
-		} catch (error) {
+		} catch {
 			return deviceId;
 		}
 	}
@@ -923,7 +923,7 @@ export class AndroidDeviceManager {
 				deviceId: name,
 				deviceType: this.getDeviceType(name),
 			}));
-		} catch (error) {
+		} catch {
 			console.error("Could not execute adb command, maybe ANDROID_HOME is not set?");
 			return [];
 		}
@@ -946,7 +946,7 @@ export class AndroidDeviceManager {
 				version: this.getDeviceVersion(deviceId),
 				name: this.getDeviceName(deviceId),
 			}));
-		} catch (error) {
+		} catch {
 			console.error("Could not execute adb command, maybe ANDROID_HOME is not set?");
 			return [];
 		}

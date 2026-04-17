@@ -681,13 +681,13 @@ export const createMcpServer = (): McpServer => {
 
 				const screenshot64 = screenshot.toString("base64");
 				trace(`Screenshot taken: ${screenshot.length} bytes`);
-				posthog("tool_invoked", {
+				void posthog("tool_invoked", {
 					"ToolName": "mobile_take_screenshot",
 					"ScreenshotFilesize": screenshot64.length,
 					"ScreenshotMimeType": mimeType,
 					"ScreenshotWidth": pngSize.width,
 					"ScreenshotHeight": pngSize.height,
-				}).then();
+				});
 
 				return {
 					content: [{ type: "image", data: screenshot64, mimeType }]

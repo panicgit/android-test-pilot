@@ -128,6 +128,35 @@ const getAdbPath = (): string => {
 	return exeName;
 };
 
+/**
+ * Patterns that we strip from logcat output before returning it to the MCP
+ * client. These are conservative — we'd rather keep a line readable than
+ * leak a secret. See S8 in IMPROVEMENT_PLAN.md.
+ */
+const REDACTION_PATTERNS: Array<{ pattern: RegExp; replacement: string }> = [
+	{ pattern: /Bearer\s+[A-Za-z0-9._\-+/=]{8,}/gi, replacement: "Bearer [REDACTED]" },
+	{ pattern: /(token|password|passwd|secret|api[_-]?key|auth|authorization|refresh[_-]?token|access[_-]?token|session[_-]?id|cookie)\s*[:=]\s*([^\s,;"}]+)/gi, replacement: "$1=[REDACTED]" },
+	{ pattern: /[\w.+\-]+@[\w\-]+\.[A-Za-z]{2,}/g, replacement: "[EMAIL-REDACTED]" },
+	{ pattern: /\b(?:\d[ -]?){13,19}\b/g, replacement: "[CARD-REDACTED]" },
+];
+
+/** Redact obvious secrets from an array of logcat lines. */
+export const redactLogcatLines = (lines: string[]): { lines: string[]; redactedCount: number } => {
+	if (process.env.MOBILEMCP_DISABLE_REDACTION === "1") {
+		return { lines, redactedCount: 0 };
+	}
+	let redactedCount = 0;
+	const out = lines.map(line => {
+		let redacted = line;
+		for (const { pattern, replacement } of REDACTION_PATTERNS) {
+			redacted = redacted.replace(pattern, replacement);
+		}
+		if (redacted !== line) redactedCount++;
+		return redacted;
+	});
+	return { lines: out, redactedCount };
+};
+
 /** Extract a readable message from an execFileSync throw (has stdout/stderr buffers). */
 const formatAdbError = (error: unknown): string => {
 	const err = error as { stdout?: Buffer | string; stderr?: Buffer | string; message?: string };
@@ -746,18 +775,24 @@ export class AndroidRobot implements Robot {
 	/**
 	 * Read collected log lines from an active session.
 	 * @param since - If provided, only return lines after this index (for incremental reads)
+	 *
+	 * Lines are passed through a redaction filter (S8) that strips obvious
+	 * secrets (Bearer tokens, token/password/api_key key=value pairs, email
+	 * addresses). Opt out with `MOBILEMCP_DISABLE_REDACTION=1` when debugging.
 	 */
-	public readLogcat(sessionId: string, since?: number): { lines: string[]; lineCount: number } {
+	public readLogcat(sessionId: string, since?: number): { lines: string[]; lineCount: number; redactedCount: number } {
 		const session = activeSessions.get(sessionId);
 		if (!session) {
 			throw new ActionableError(`Logcat session "${sessionId}" not found. It may have expired or been stopped.`);
 		}
 
 		const startIndex = Math.max(0, since ?? 0);
-		const lines = session.buffer.slice(startIndex);
+		const rawLines = session.buffer.slice(startIndex);
+		const { lines, redactedCount } = redactLogcatLines(rawLines);
 		return {
 			lines,
 			lineCount: session.buffer.length,
+			redactedCount,
 		};
 	}
 

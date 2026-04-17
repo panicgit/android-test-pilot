@@ -894,8 +894,9 @@ export const createMcpServer = (): McpServer => {
 			return JSON.stringify({
 				lines: result.lines,
 				lineCount: result.lineCount,
+				redactedCount: result.redactedCount,
 				readFrom: since ?? 0,
-				message: `${result.lines.length} lines returned (total buffer: ${result.lineCount})`,
+				message: `${result.lines.length} lines returned (total buffer: ${result.lineCount}${result.redactedCount > 0 ? `, ${result.redactedCount} redacted` : ""})`,
 			});
 		}
 	);

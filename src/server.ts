@@ -30,6 +30,26 @@ const DEVICE_SCHEMA = z.string().describe(
 	"The device identifier to use. Use mobile_list_available_devices to find which devices are available to you.",
 );
 
+/**
+ * Static-analysis heuristic for catastrophic-backtracking regex patterns.
+ * Rejects the classic danger shapes: nested unbounded quantifiers on the
+ * same group, and unbounded quantifiers over alternation whose branches
+ * can match the same character (SR-7).
+ *
+ * Not a complete ReDoS detector — users submitting a malicious engine
+ * should still run matches with a short timeout, but a cheap static pass
+ * blocks the common "(a+)+$", "([a-z]+)*", "(a|aa)+" shapes before they
+ * reach the matcher.
+ */
+const isLikelyCatastrophicRegex = (p: string): boolean => {
+	// (X+)+  or  (X*)* or (X+)*  or (X*)+  — nested unbounded quantifiers
+	if (/\([^)]*[+*][^)]*\)[+*]/.test(p)) return true;
+	// Disjunction where both branches start with the same class and the
+	// whole group is unbounded: e.g. (a|aa)+  (?:ab|a)+
+	if (/\(\?:?[^)]*\|[^)]*\)[+*]/.test(p) && /[+*]/.test(p)) return true;
+	return false;
+};
+
 interface MobilecliDevice {
 	id: string;
 	name: string;
@@ -944,6 +964,9 @@ export const createMcpServer = (): McpServer => {
 				pattern: z.string().min(1).max(200).refine(
 					(p) => { try { new RegExp(p); return true; } catch { return false; } },
 					{ message: "Invalid regex pattern (max 200 chars; must compile)" },
+				).refine(
+					(p) => !isLikelyCatastrophicRegex(p),
+					{ message: "Pattern rejected: catastrophic backtracking likely (nested unbounded quantifiers or alternation)" },
 				).describe("Regex pattern to match against log lines (max 200 chars)"),
 			})).optional().describe("Expected logcat entries for Tier 1 text-based verification"),
 			tapTarget: z.object({

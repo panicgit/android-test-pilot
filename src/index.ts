@@ -5,6 +5,23 @@ import { createMcpServer, getAgentVersion } from "./server";
 import { error } from "./logger";
 import express from "express";
 import { program } from "commander";
+import crypto from "node:crypto";
+
+/**
+ * Constant-time comparison of an incoming Authorization header against the
+ * expected `Bearer <token>` string. Short-circuiting `!==` would leak the
+ * token length and first differing byte via response timing (SR-4).
+ */
+const bearerMatches = (headerValue: string | undefined, expected: string): boolean => {
+	if (!headerValue) return false;
+	const received = Buffer.from(headerValue);
+	const want = Buffer.from(expected);
+	// Lengths compared in the open; crypto.timingSafeEqual throws if they
+	// differ, so we return false early to avoid exposing that branch timing
+	// difference beyond what an attacker can already infer from response size.
+	if (received.length !== want.length) return false;
+	return crypto.timingSafeEqual(received, want);
+};
 
 const startSseServer = async (host: string, port: number) => {
 	const app = express();
@@ -23,18 +40,32 @@ Or, only for trusted local development, override:
 
   export MOBILEMCP_ALLOW_INSECURE_LISTEN=1
 
-Refusing to start. See SECURITY in IMPROVEMENT_PLAN.md (S3).
+Refusing to start.
 `);
 		process.exit(1);
 	}
 
+	// SR-6 — MOBILEMCP_ALLOW_INSECURE_LISTEN must not bind a public interface.
+	// Only loopback (127.0.0.1, ::1, localhost) is permitted without auth.
 	if (!authToken && allowInsecure) {
-		error("WARNING: SSE server running WITHOUT authentication (MOBILEMCP_ALLOW_INSECURE_LISTEN=1). Anyone reachable on the bound interface can invoke any tool.");
+		const loopbackHosts = new Set(["127.0.0.1", "::1", "localhost"]);
+		if (!loopbackHosts.has(host.toLowerCase())) {
+			console.error(`
+[FATAL] MOBILEMCP_ALLOW_INSECURE_LISTEN=1 is only valid on loopback.
+Refusing to bind "${host}" without MOBILEMCP_AUTH. Either:
+  - Bind localhost:PORT, or
+  - Set MOBILEMCP_AUTH for the remote interface.
+`);
+			process.exit(1);
+		}
+		error(`WARNING: SSE server running WITHOUT authentication (MOBILEMCP_ALLOW_INSECURE_LISTEN=1) on loopback ${host}.`);
 	}
 
 	if (authToken) {
+		const expected = `Bearer ${authToken}`;
 		app.use((req, res, next) => {
-			if (req.headers.authorization !== `Bearer ${authToken}`) {
+			const header = req.headers.authorization;
+			if (!bearerMatches(Array.isArray(header) ? header[0] : header, expected)) {
 				res.status(401).json({ error: "Unauthorized" });
 				return;
 			}

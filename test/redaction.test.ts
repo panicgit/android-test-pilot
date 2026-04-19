@@ -43,14 +43,25 @@ describe("redactLogcatLines (S8)", () => {
 		assert.strictEqual(redactedCount, 1);
 	});
 
-	it("strips long digit strings that look like card numbers", () => {
+	it("strips long digit strings that look like card numbers (Luhn-validated, SR-2)", () => {
 		const { lines } = redactLogcatLines([
-			"ATP_API cardNumber=4111111111111111",
-			"ATP_API tokenizedCard=4242 4242 4242 4242",
+			"ATP_API cardNumber=4111111111111111",      // valid Visa test
+			"ATP_API tokenizedCard=4242 4242 4242 4242", // valid Stripe test
 		]);
 		for (const line of lines) {
-			assert.ok(line.includes("[CARD-REDACTED]"));
+			assert.ok(line.includes("[CARD-REDACTED]"), `expected redaction in: ${line}`);
 		}
+	});
+
+	it("does NOT strip 13-19 digit runs that fail Luhn (SR-2 false positive fix)", () => {
+		const { lines, redactedCount } = redactLogcatLines([
+			"ATP_SCREEN timestamp=1234567890123456",     // 16 digits, fails Luhn
+			"ATP_RENDER traceId=9999999999999999",       // all 9s, fails Luhn
+		]);
+		for (const line of lines) {
+			assert.ok(!line.includes("[CARD-REDACTED]"), `false positive in: ${line}`);
+		}
+		assert.strictEqual(redactedCount, 0);
 	});
 
 	it("strips Basic auth headers (SR-1)", () => {

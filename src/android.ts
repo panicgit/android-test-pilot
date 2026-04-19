@@ -148,9 +148,37 @@ const REDACTION_PATTERNS: Array<{ pattern: RegExp; replacement: string }> = [
 	{ pattern: /["']?(token|password|passwd|secret|api[_-]?key|auth|authorization|refresh[_-]?token|access[_-]?token|session[_-]?id|cookie)["']?\s*[:=]\s*["']?[^"'\s,;}\]]+["']?/gi, replacement: "$1=[REDACTED]" },
 	// Email addresses.
 	{ pattern: /[\w.+\-]+@[\w\-]+\.[A-Za-z]{2,}/g, replacement: "[EMAIL-REDACTED]" },
-	// Card-shaped digit runs — 13-19 digits with optional space/dash separators.
-	{ pattern: /\b(?:\d[ -]?){13,19}\b/g, replacement: "[CARD-REDACTED]" },
+	// Card-shaped digit runs are redacted via redactCardShapes() below; Luhn
+	// check reduces false positives on timestamps and trace IDs (SR-2).
 ];
+
+/**
+ * Luhn check for card-shape digit strings. Reduces false positives on
+ * timestamps, phone numbers, trace IDs that happen to be 13-19 digits
+ * (SR-2).
+ */
+const passesLuhn = (digits: string): boolean => {
+	let sum = 0;
+	let alt = false;
+	for (let i = digits.length - 1; i >= 0; i--) {
+		let n = digits.charCodeAt(i) - 48;
+		if (n < 0 || n > 9) return false;
+		if (alt) {
+			n *= 2;
+			if (n > 9) n -= 9;
+		}
+		sum += n;
+		alt = !alt;
+	}
+	return sum % 10 === 0;
+};
+
+const CARD_SHAPE = /\b(?:\d[ -]?){13,19}\b/g;
+const redactCardShapes = (line: string): string =>
+	line.replace(CARD_SHAPE, (match) => {
+		const digits = match.replace(/[ -]/g, "");
+		return passesLuhn(digits) ? "[CARD-REDACTED]" : match;
+	});
 
 /** Redact obvious secrets from an array of logcat lines. */
 export const redactLogcatLines = (lines: string[]): { lines: string[]; redactedCount: number } => {
@@ -163,6 +191,7 @@ export const redactLogcatLines = (lines: string[]): { lines: string[]; redactedC
 		for (const { pattern, replacement } of REDACTION_PATTERNS) {
 			redacted = redacted.replace(pattern, replacement);
 		}
+		redacted = redactCardShapes(redacted);
 		if (redacted !== line) redactedCount++;
 		return redacted;
 	});

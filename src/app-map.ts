@@ -50,12 +50,37 @@ export interface AppMapLoadResult {
 
 let cached: { mtime: number; result: AppMapLoadResult } | null = null;
 
+/**
+ * Resolve the app-map directory from ATP_PROJECT_ROOT or cwd, then realpath
+ * the result and ensure it is contained inside the resolved root. Prevents
+ * symlink traversal when ATP_PROJECT_ROOT is set in a multi-tenant harness
+ * (SR-5).
+ */
 export const resolveAppMapDir = (): string => {
-	const root = process.env.ATP_PROJECT_ROOT?.trim();
-	if (root) {
-		return path.join(root, ".claude", "app-map");
+	const raw = process.env.ATP_PROJECT_ROOT?.trim();
+	const root = raw ? path.resolve(raw) : path.resolve(process.cwd());
+	const target = path.join(root, ".claude", "app-map");
+
+	try {
+		const realRoot = fs.realpathSync(root);
+		if (fs.existsSync(target)) {
+			const realTarget = fs.realpathSync(target);
+			const containment = path.relative(realRoot, realTarget);
+			if (containment.startsWith("..") || path.isAbsolute(containment)) {
+				throw new Error(
+					`ATP_PROJECT_ROOT symlink escapes project root: ${realTarget} is outside ${realRoot}`,
+				);
+			}
+		}
+	} catch (err: unknown) {
+		// Missing directory on a fresh checkout is fine — the caller surfaces it
+		// as a "Missing artifact" warning. Only rethrow containment violations.
+		if (err instanceof Error && err.message.startsWith("ATP_PROJECT_ROOT symlink escapes")) {
+			throw err;
+		}
 	}
-	return path.join(process.cwd(), ".claude", "app-map");
+
+	return target;
 };
 
 const safeParseJson = <T>(filePath: string, schema: z.ZodType<T>, warnings: string[]): T | null => {

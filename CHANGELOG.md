@@ -5,6 +5,38 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+### Batch 3 — new features (improvement/batch-3-features)
+
+#### Features
+- **A7** — `atp_validate_scenario` MCP tool and `ScenarioSchema` Zod
+  definition. Lint scenarios before `atp_run_step` reaches them.
+  Supports `.json` and `.md` (YAML front-matter). Pre-parse raw-text
+  scan catches the canonical typos (`ATP_VIEW`, `ATP_SCREENS`,
+  `ATP_APIS`, etc.) with corrected-tag suggestions. tapTarget refinement
+  enforces "resourceId OR both x/y"; regex patterns must compile.
+- **C5 / S3-5** — `SnapshotTier` (priority 0) for visual-regression
+  verification. Steps declare `expectedSnapshot: { name, threshold?,
+  createIfMissing? }`; tier captures a PNG, pixel-diffs against
+  `.claude/baselines/{name}.png` via pixelmatch + pngjs, writes a diff
+  image alongside on FAIL. Baseline is auto-created on first run by
+  default. Pre-empts TextTier so visual regressions can't be hidden
+  behind a logcat pass.
+- **A10 / S3-4** — structured tracing. `atp_run_step` wraps each
+  phase (`act`, `verify`, settle delay) in a `TraceContext` span and
+  returns the collected summary as `traceSummary` on every response.
+  JSONL emitted to `$ATP_TRACE_FILE` when set — OTel-compatible span
+  shape without pulling the OpenTelemetry SDK.
+
+#### Dependencies
+- `pixelmatch` and `pngjs` added under `optionalDependencies`. The
+  snapshot tier fails gracefully (FALLBACK) if either is missing, so
+  installs that skip native binaries still work.
+
+#### Tests (+20)
+- `test/scenario.test.ts` (8 cases)
+- `test/snapshot-tier.test.ts` (7 cases)
+- `test/tracing.test.ts` (5 cases)
+
 ### Batch 2 — tier system refactor (improvement/batch-2-refactor)
 
 #### Architecture

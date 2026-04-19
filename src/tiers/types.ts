@@ -137,11 +137,8 @@ export type TierResult =
 	| { tier: string; status: "FALLBACK"; fallbackHint: string; observation?: string; rawData?: string }
 	| { tier: string; status: "ERROR"; error: string };
 
-/**
- * Flatten a TierResult to a wire-friendly plain object for the MCP response.
- * All variant-specific fields appear as undefined when absent.
- */
-export const flattenTierResult = (result: TierResult): {
+/** Wire-friendly flat shape of a TierResult. */
+export interface FlatTierResult {
 	tier: string;
 	status: TierStatus;
 	observation?: string;
@@ -149,18 +146,34 @@ export const flattenTierResult = (result: TierResult): {
 	fallbackHint?: string;
 	error?: string;
 	rawData?: string;
-} => {
-	const out = { tier: result.tier, status: result.status } as Record<string, unknown>;
-	if (result.status === "SUCCESS" || result.status === "FAIL") {
-		if (result.observation !== undefined) out.observation = result.observation;
-		if (result.verification !== undefined) out.verification = result.verification;
-		if (result.rawData !== undefined) out.rawData = result.rawData;
-	} else if (result.status === "FALLBACK") {
-		out.fallbackHint = result.fallbackHint;
-		if (result.observation !== undefined) out.observation = result.observation;
-		if (result.rawData !== undefined) out.rawData = result.rawData;
-	} else {
-		out.error = result.error;
+}
+
+/**
+ * Flatten a TierResult to a wire-friendly plain object for the MCP response.
+ * Built as an explicit FlatTierResult per branch so the compiler enforces
+ * completeness — no unchecked terminal cast (T-R6).
+ */
+export const flattenTierResult = (result: TierResult): FlatTierResult => {
+	switch (result.status) {
+		case "SUCCESS":
+		case "FAIL": {
+			const out: FlatTierResult = { tier: result.tier, status: result.status };
+			if (result.observation !== undefined) out.observation = result.observation;
+			if (result.verification !== undefined) out.verification = result.verification;
+			if (result.rawData !== undefined) out.rawData = result.rawData;
+			return out;
+		}
+		case "FALLBACK": {
+			const out: FlatTierResult = {
+				tier: result.tier,
+				status: result.status,
+				fallbackHint: result.fallbackHint,
+			};
+			if (result.observation !== undefined) out.observation = result.observation;
+			if (result.rawData !== undefined) out.rawData = result.rawData;
+			return out;
+		}
+		case "ERROR":
+			return { tier: result.tier, status: result.status, error: result.error };
 	}
-	return out as ReturnType<typeof flattenTierResult>;
 };

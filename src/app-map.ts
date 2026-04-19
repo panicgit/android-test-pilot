@@ -83,17 +83,23 @@ export const resolveAppMapDir = (): string => {
 	return target;
 };
 
+/**
+ * Read + parse + validate an artifact in a single try/catch — no
+ * existsSync-then-readFileSync TOCTOU window (T-R4). ENOENT is treated
+ * as "missing", anything else as a warning.
+ */
 const safeParseJson = <T>(filePath: string, schema: z.ZodType<T>, warnings: string[]): T | null => {
-	if (!fs.existsSync(filePath)) {
-		warnings.push(`Missing artifact: ${path.basename(filePath)} at ${filePath}. Run /atp:analyze-app first.`);
-		return null;
-	}
 	let raw: string;
 	try {
 		raw = fs.readFileSync(filePath, "utf-8");
 	} catch (err: unknown) {
-		const msg = err instanceof Error ? err.message : String(err);
-		warnings.push(`Failed reading ${path.basename(filePath)}: ${msg}`);
+		const code = (err as { code?: string })?.code;
+		if (code === "ENOENT") {
+			warnings.push(`Missing artifact: ${path.basename(filePath)} at ${filePath}. Run /atp:analyze-app first.`);
+		} else {
+			const msg = err instanceof Error ? err.message : String(err);
+			warnings.push(`Failed reading ${path.basename(filePath)}: ${msg}`);
+		}
 		return null;
 	}
 	let parsedJson: unknown;
@@ -132,9 +138,17 @@ export const loadAppMap = (): AppMapLoadResult => {
 	}
 
 	const warnings: string[] = [];
-	const navigationMap = fs.existsSync(navPath) ? fs.readFileSync(navPath, "utf-8") : "";
-	if (!fs.existsSync(navPath)) {
-		warnings.push(`Missing artifact: navigation_map.mermaid at ${navPath}. Run /atp:analyze-app first.`);
+	let navigationMap = "";
+	try {
+		navigationMap = fs.readFileSync(navPath, "utf-8");
+	} catch (err: unknown) {
+		const code = (err as { code?: string })?.code;
+		if (code === "ENOENT") {
+			warnings.push(`Missing artifact: navigation_map.mermaid at ${navPath}. Run /atp:analyze-app first.`);
+		} else {
+			const msg = err instanceof Error ? err.message : String(err);
+			warnings.push(`Failed reading navigation_map.mermaid: ${msg}`);
+		}
 	}
 
 	const apis = safeParseJson(apiPath, ApiScenariosFileSchema, warnings);

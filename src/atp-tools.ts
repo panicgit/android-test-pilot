@@ -15,7 +15,9 @@ import { TextTier } from "./tiers/text-tier";
 import { UiAutomatorTier } from "./tiers/uiautomator-tier";
 import { ScreenshotTier } from "./tiers/screenshot-tier";
 import { loadAppMap } from "./app-map";
+import { validateScenarioFile } from "./scenario";
 import { trace } from "./logger";
+import path from "node:path";
 
 // P10 — one runner, three tier instances shared across every atp_run_step
 // call. Tiers are stateless after A4, so sharing is safe under concurrency.
@@ -153,6 +155,31 @@ export const registerAtpTools = (deps: AtpToolsDeps): void => {
 				bufferBytes: stats.bufferBytes,
 				bytesDropped: stats.bytesDropped,
 				message: `Logcat session stopped. Collected ${stats.totalLines} lines (${stats.bufferBytes} bytes${stats.bytesDropped > 0 ? `, dropped ${stats.bytesDropped} bytes due to caps` : ""}) over ${Math.round(stats.durationMs / 1000)}s.`,
+			});
+		},
+	);
+
+	// ─── Scenario validator ────────────────────────────────────────
+
+	tool(
+		"atp_validate_scenario",
+		"ATP Validate Scenario",
+		"Validate a scenario file (.json or .md with YAML front-matter) against the android-test-pilot schema. Catches known ATP tag typos (ATP_VIEW vs ATP_RENDER) and bad regex patterns BEFORE they reach atp_run_step. Returns { ok, errors[], warnings[] }.",
+		{
+			path: z.string().describe("Absolute or project-relative path to the scenario file. Must end in .json or .md."),
+		},
+		{ readOnlyHint: true },
+		async ({ path: scenarioPath }) => {
+			const resolved = path.isAbsolute(scenarioPath)
+				? scenarioPath
+				: path.resolve(process.cwd(), scenarioPath);
+			const result = validateScenarioFile(resolved);
+			return JSON.stringify({
+				path: resolved,
+				ok: result.ok,
+				errors: result.errors,
+				warnings: result.warnings,
+				stepCount: result.scenario?.steps.length,
 			});
 		},
 	);

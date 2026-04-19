@@ -1,6 +1,6 @@
 import path from "node:path";
 import crypto from "node:crypto";
-import { execFile, spawn, ChildProcess } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import { existsSync } from "node:fs";
 
@@ -11,78 +11,17 @@ import * as xml from "fast-xml-parser";
 import { ActionableError, Button, InstalledApp, Robot, ScreenElement, ScreenElementRect, ScreenSize, SwipeDirection, Orientation } from "./robot";
 import { validatePackageName, validateLocale } from "./utils";
 import { trace } from "./logger";
+import { LogcatSession, LogcatSessionRegistry, DEFAULT_REGISTRY } from "./logcat-registry";
 
-// ─── Logcat Session Management ──────────────────────────────────────
-
-export interface LogcatSession {
-	id: string;
-	deviceId: string;
-	process: ChildProcess;
-	buffer: string[];
-	bufferBytes: number;
-	startTime: number;
-	maxDuration: number;
-	tags: string[];
-	timer: NodeJS.Timeout;
-	bytesDropped: number;
-}
-
-/** Global store for active logcat sessions across all devices */
-const activeSessions = new Map<string, LogcatSession>();
+// Re-export the type so existing importers (tests, bench) don't need to
+// change paths.
+export { LogcatSession };
 
 /** Max lines to keep in a logcat session buffer to prevent memory exhaustion */
 const MAX_LOGCAT_LINES = 50_000;
 
 /** Max bytes per session buffer — defense against very long log lines (H2). */
 const MAX_LOGCAT_BYTES = 64 * 1024 * 1024;
-
-/** Max concurrent logcat sessions for a single device (S2 + H8). */
-const MAX_SESSIONS_PER_DEVICE = 3;
-
-/** Global cap on logcat sessions across all devices (S2). */
-const MAX_GLOBAL_SESSIONS = 50;
-
-/**
- * Best-effort synchronous cleanup — used on 'exit' where the process is
- * already tearing down and we cannot await anything.
- */
-const cleanupAllSessionsSync = (): void => {
-	for (const [, session] of activeSessions) {
-		clearTimeout(session.timer);
-		session.process.kill("SIGTERM");
-	}
-	activeSessions.clear();
-};
-
-/**
- * Graceful cleanup — signal each child then wait (bounded) for it to exit so
- * the last batch of logcat lines can drain. Used on SIGTERM/SIGINT where the
- * server is alive long enough to await. See H1 in IMPROVEMENT_PLAN.md.
- */
-const cleanupAllSessionsGraceful = async (drainTimeoutMs = 2000): Promise<void> => {
-	const pending: Promise<void>[] = [];
-	for (const [, session] of activeSessions) {
-		clearTimeout(session.timer);
-		session.process.kill("SIGTERM");
-		pending.push(new Promise<void>(resolve => {
-			const timer = setTimeout(resolve, drainTimeoutMs);
-			session.process.once("exit", () => {
-				clearTimeout(timer);
-				resolve();
-			});
-		}));
-	}
-	await Promise.all(pending);
-	activeSessions.clear();
-};
-
-process.on("exit", cleanupAllSessionsSync);
-process.on("SIGTERM", () => {
-	cleanupAllSessionsGraceful().finally(() => process.exit(0));
-});
-process.on("SIGINT", () => {
-	cleanupAllSessionsGraceful().finally(() => process.exit(0));
-});
 
 export interface AndroidDevice {
 	deviceId: string;
@@ -244,7 +183,11 @@ type AndroidDeviceType = "tv" | "mobile";
 
 export class AndroidRobot implements Robot {
 
-	public constructor(private deviceId: string) {
+	public constructor(
+		private deviceId: string,
+		/** Injectable session registry — tests pass a fresh one for isolation. */
+		private readonly registry: LogcatSessionRegistry = DEFAULT_REGISTRY,
+	) {
 	}
 
 	public getDeviceId(): string {
@@ -745,16 +688,11 @@ export class AndroidRobot implements Robot {
 	 */
 	public startLogcat(tags: string[], durationSeconds: number): LogcatSession {
 		// Cap concurrent sessions to prevent memory/fd exhaustion (S2 + H8).
-		const perDevice = [...activeSessions.values()].filter(s => s.deviceId === this.deviceId).length;
-		if (perDevice >= MAX_SESSIONS_PER_DEVICE) {
-			throw new ActionableError(
-				`Device "${this.deviceId}" already has ${MAX_SESSIONS_PER_DEVICE} active logcat sessions. Stop one with atp_logcat_stop before starting another.`,
-			);
-		}
-		if (activeSessions.size >= MAX_GLOBAL_SESSIONS) {
-			throw new ActionableError(
-				`Global logcat session cap (${MAX_GLOBAL_SESSIONS}) reached. Stop existing sessions before starting new ones.`,
-			);
+		try {
+			this.registry.assertCapacity(this.deviceId);
+		} catch (err: unknown) {
+			const msg = err instanceof Error ? err.message : String(err);
+			throw new ActionableError(msg);
 		}
 
 		const sessionId = crypto.randomUUID();
@@ -831,10 +769,10 @@ export class AndroidRobot implements Robot {
 
 		proc.on("exit", () => {
 			clearTimeout(session.timer);
-			activeSessions.delete(sessionId);
+			this.registry.delete(sessionId);
 		});
 
-		activeSessions.set(sessionId, session);
+		this.registry.add(session);
 		return session;
 	}
 
@@ -847,7 +785,7 @@ export class AndroidRobot implements Robot {
 	 * addresses). Opt out with `MOBILEMCP_DISABLE_REDACTION=1` when debugging.
 	 */
 	public readLogcat(sessionId: string, since?: number): { lines: string[]; lineCount: number; redactedCount: number } {
-		const session = activeSessions.get(sessionId);
+		const session = this.registry.get(sessionId);
 		if (!session) {
 			throw new ActionableError(`Logcat session "${sessionId}" not found. It may have expired or been stopped. Next step: call atp_logcat_start to begin a fresh session.`);
 		}
@@ -866,23 +804,15 @@ export class AndroidRobot implements Robot {
 	 * Stop a logcat streaming session and return stats.
 	 */
 	public stopLogcat(sessionId: string): { totalLines: number; durationMs: number; bufferBytes: number; bytesDropped: number } {
-		const session = activeSessions.get(sessionId);
-		if (!session) {
+		const stopped = this.registry.stopAndRemove(sessionId);
+		if (!stopped) {
 			throw new ActionableError(`Logcat session "${sessionId}" not found. It may have already been stopped.`);
 		}
-
-		clearTimeout(session.timer);
-		session.process.kill("SIGTERM");
-		activeSessions.delete(sessionId);
-
-		const durationMs = Date.now() - session.startTime;
-		trace(`Logcat session ${sessionId} stopped: ${session.buffer.length} lines, ${session.bufferBytes}B (dropped ${session.bytesDropped}B), ${durationMs}ms`);
-
 		return {
-			totalLines: session.buffer.length,
-			durationMs,
-			bufferBytes: session.bufferBytes,
-			bytesDropped: session.bytesDropped,
+			totalLines: stopped.session.buffer.length,
+			durationMs: stopped.durationMs,
+			bufferBytes: stopped.session.bufferBytes,
+			bytesDropped: stopped.session.bytesDropped,
 		};
 	}
 
@@ -907,21 +837,13 @@ export class AndroidRobot implements Robot {
 	}
 
 	/** Get an active logcat session by ID (for server.ts to check existence) */
-	public static getSession(sessionId: string): LogcatSession | undefined {
-		return activeSessions.get(sessionId);
+	public static getSession(sessionId: string, registry: LogcatSessionRegistry = DEFAULT_REGISTRY): LogcatSession | undefined {
+		return registry.get(sessionId);
 	}
 
 	/** Get the most recent active logcat session for a device (for TextTier) */
-	public static getSessionByDevice(deviceId: string): LogcatSession | undefined {
-		let latest: LogcatSession | undefined;
-		for (const session of activeSessions.values()) {
-			if (session.deviceId === deviceId) {
-				if (!latest || session.startTime > latest.startTime) {
-					latest = session;
-				}
-			}
-		}
-		return latest;
+	public static getSessionByDevice(deviceId: string, registry: LogcatSessionRegistry = DEFAULT_REGISTRY): LogcatSession | undefined {
+		return registry.latestForDevice(deviceId);
 	}
 }
 

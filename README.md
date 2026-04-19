@@ -69,6 +69,47 @@ Reads a markdown scenario file and runs tests using a 3-tier strategy.
 | Tier 2 | uiautomator + accessibility tree | When Tier 1 can't determine | Rendered View hierarchy, resource-id, bounds |
 | Tier 3 | Screenshot | Last resort | Image rendering, unexpected popup detection |
 
+## Quickstart (5 minutes)
+
+Goal: run your first scenario against a connected emulator.
+
+```bash
+# 1. Connect a device or start an emulator
+adb devices
+# List of devices attached
+# emulator-5554   device
+
+# 2. Install the plugin (one-time)
+/plugin add panicgit/android-test-pilot
+/reload-plugins
+
+# 3. Analyse your app (generates .claude/app-map/*)
+/atp:analyze-app
+
+# 4. Add ATP_* logs where coverage is thin
+/atp:check-logs
+
+# 5. Write or copy a scenario (use examples/scenarios/quickstart-login.json
+#    as a starting point), then run it:
+/atp:run-test scenarios/login.json
+```
+
+Expected result table:
+
+| Step | Expected | Tier Used | Result |
+|------|----------|-----------|--------|
+| 1    | LoginActivity foreground | text | PASS |
+| 2    | Login button enabled | text | PASS |
+| 3    | HomeActivity opens + auth 200 | text | PASS |
+
+If a step drops to tier `uiautomator` or `screenshot`, see
+[TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+
+Reference artifacts you can compare your output against live in
+[`examples/sample-app-map/`](examples/sample-app-map/) and a ready-to-run
+scenario in
+[`examples/scenarios/quickstart-login.json`](examples/scenarios/quickstart-login.json).
+
 ## Installation
 
 ### Requirements

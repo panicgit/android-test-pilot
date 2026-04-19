@@ -1,0 +1,8 @@
+flowchart TD
+    Launcher((Launcher)) --> LoginActivity
+    LoginActivity -->|login success| HomeActivity
+    LoginActivity -->|"Forgot password?"| ForgotPasswordActivity
+    HomeActivity -->|tap profile| ProfileActivity
+    HomeActivity -->|tap item| ItemDetailActivity
+    ProfileActivity -->|logout| LoginActivity
+    ForgotPasswordActivity -->|"Back"| LoginActivity

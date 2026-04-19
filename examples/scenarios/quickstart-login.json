@@ -1,0 +1,35 @@
+{
+  "name": "quickstart-login",
+  "description": "5-minute quickstart — log into the sample app and confirm HomeActivity reached.",
+  "prerequisites": [
+    "Emulator connected (adb devices shows one device)",
+    "Sample app installed (com.example.atpdemo)",
+    "ATP_* logs present in LoginActivity and HomeActivity"
+  ],
+  "steps": [
+    {
+      "action": "Launch com.example.atpdemo",
+      "verification": "LoginActivity is in the foreground",
+      "expectedLogcat": [
+        { "tag": "ATP_SCREEN", "pattern": "enter: LoginActivity" }
+      ]
+    },
+    {
+      "action": "Type valid credentials",
+      "verification": "Login button becomes enabled",
+      "tapTarget": { "resourceId": "et_email" },
+      "expectedLogcat": [
+        { "tag": "ATP_RENDER", "pattern": "btn_login=enabled" }
+      ]
+    },
+    {
+      "action": "Tap the login button",
+      "verification": "Auth API returns 200 and HomeActivity opens",
+      "tapTarget": { "resourceId": "btn_login" },
+      "expectedLogcat": [
+        { "tag": "ATP_API", "pattern": "endpoint=POST /auth/login, status=200" },
+        { "tag": "ATP_SCREEN", "pattern": "enter: HomeActivity" }
+      ]
+    }
+  ]
+}

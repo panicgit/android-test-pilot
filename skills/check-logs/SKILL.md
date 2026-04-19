@@ -3,7 +3,8 @@ name: check-logs
 description: "Check and augment logcat log coverage based on Step 0 analysis results"
 disable-model-invocation: true
 user-invocable: true
-allowed-tools: Read Grep Glob Bash Write Edit
+allowed-tools: ["Read", "Grep", "Glob", "Bash", "Write", "Edit"]
+argument-hint: "(no arguments; requires /atp:analyze-app artifacts)"
 ---
 
 # Step 1: Log Coverage Check & Augmentation

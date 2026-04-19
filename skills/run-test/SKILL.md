@@ -1,10 +1,10 @@
 ---
 name: run-test
-description: "Run device test from a scenario file using 3-tier strategy (text → uiautomator → screenshot)"
+description: "Run device test from a scenario file using 3-tier strategy (snapshot → text → uiautomator → screenshot). Auto-starts the logcat session. Supports visual regression via expectedSnapshot."
 disable-model-invocation: true
 user-invocable: true
-allowed-tools: Read Grep Glob Bash
-argument-hint: <scenario-file-path>
+allowed-tools: ["Read", "Grep", "Glob", "Bash"]
+argument-hint: "<scenario-file-path> — .json preferred, .md with YAML front-matter accepted"
 ---
 
 # Step 2: Device Test Execution
@@ -40,6 +40,12 @@ $ARGUMENTS
 
 If no scenario file path is provided, stop with:
 > No scenario file specified. Usage: `/atp:run-test scenarios/login.md`
+
+Scenario format reference: [`templates/scenario.md`](../../templates/scenario.md).
+Before running, call `atp_validate_scenario(path: "<path>")` to catch
+typos (ATP_VIEW vs ATP_RENDER) and malformed regex patterns up front.
+If the validator returns `ok: false`, stop and surface the errors —
+do not attempt to run the scenario.
 
 Read the scenario file and parse each test step.
 

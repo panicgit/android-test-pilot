@@ -1,0 +1,42 @@
+{
+  "apis": [
+    {
+      "endpoint": "POST /auth/login",
+      "interfaceFile": "AuthApi.kt:12",
+      "callers": [
+        {
+          "file": "LoginViewModel.kt:48",
+          "successHandler": "LoginViewModel.kt:53-61",
+          "errorHandler": "LoginViewModel.kt:62-70"
+        }
+      ]
+    },
+    {
+      "endpoint": "GET /user/me",
+      "interfaceFile": "UserApi.kt:8",
+      "callers": [
+        {
+          "file": "HomeViewModel.kt:31",
+          "successHandler": "HomeViewModel.kt:36-44",
+          "errorHandler": "HomeViewModel.kt:45-50"
+        },
+        {
+          "file": "ProfileViewModel.kt:22",
+          "successHandler": "ProfileViewModel.kt:27-34",
+          "errorHandler": "ProfileViewModel.kt:35-40"
+        }
+      ]
+    },
+    {
+      "endpoint": "GET /items",
+      "interfaceFile": "ItemApi.kt:10",
+      "callers": [
+        {
+          "file": "HomeViewModel.kt:52",
+          "successHandler": "HomeViewModel.kt:57-65",
+          "errorHandler": "HomeViewModel.kt:66-70"
+        }
+      ]
+    }
+  ]
+}

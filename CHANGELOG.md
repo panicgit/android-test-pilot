@@ -5,6 +5,29 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+### Batch 4 — docs + DX (improvement/batch-4-docs-dx)
+
+#### Documentation
+- **D1** — README now opens with a 5-minute Quickstart showing the
+  five-command happy path from `adb devices` to the first scenario
+  result table.
+- **D2** — `examples/sample-app-map/` with fully filled Mermaid
+  navigation, API scenarios JSON, and view-state map JSON so adopters
+  can compare their own `/atp:analyze-app` output against a reference.
+  Paired with `examples/scenarios/quickstart-login.json`.
+
+#### Skills / DX
+- **DX2** — `allowed-tools` switched to array syntax across all four
+  SKILL.md files (previously space-separated strings).
+- **DX3** — `argument-hint` added to every skill (previously only on
+  run-test).
+- **DX8** — `app-map` skill description clarifies it's a **viewer**
+  and depends on `/atp:analyze-app` having already run.
+- **DX9** — run-test SKILL.md now points at
+  `templates/scenario.md` and instructs the model to call
+  `atp_validate_scenario` before executing any step, surfacing
+  ATP tag typos and bad regexes up front.
+
 ### Batch 3 — new features (improvement/batch-3-features)
 
 #### Features

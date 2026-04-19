@@ -1,0 +1,46 @@
+{
+  "screens": [
+    {
+      "name": "LoginActivity",
+      "file": "LoginActivity.kt",
+      "states": [
+        {
+          "viewId": "btn_login",
+          "visibilityCondition": "isFormValid && !isLoading",
+          "dataSource": "LoginViewModel.formState",
+          "sourceFile": "LoginActivity.kt:67"
+        },
+        {
+          "viewId": "tv_error",
+          "visibilityCondition": "errorMessage != null",
+          "dataSource": "LoginViewModel.uiState",
+          "sourceFile": "LoginActivity.kt:81"
+        },
+        {
+          "viewId": "pb_loading",
+          "visibilityCondition": "isLoading",
+          "dataSource": "LoginViewModel.uiState",
+          "sourceFile": "LoginActivity.kt:90"
+        }
+      ]
+    },
+    {
+      "name": "HomeActivity",
+      "file": "HomeActivity.kt",
+      "states": [
+        {
+          "viewId": "rv_items",
+          "visibilityCondition": "items.isNotEmpty()",
+          "dataSource": "HomeViewModel.items",
+          "sourceFile": "HomeActivity.kt:54"
+        },
+        {
+          "viewId": "tv_empty",
+          "visibilityCondition": "items.isEmpty() && !isLoading",
+          "dataSource": "HomeViewModel.items",
+          "sourceFile": "HomeActivity.kt:68"
+        }
+      ]
+    }
+  ]
+}

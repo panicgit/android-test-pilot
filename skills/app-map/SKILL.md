@@ -1,8 +1,9 @@
 ---
 name: app-map
-description: "View Step 0 static analysis results summary"
+description: "Summarise the Step 0 artifacts produced by /atp:analyze-app. Read-only viewer — does not generate the artifacts; run /atp:analyze-app first."
 user-invocable: true
-allowed-tools: Read Glob
+allowed-tools: ["Read", "Glob"]
+argument-hint: "(no arguments; reads .claude/app-map/)"
 ---
 
 # App Map Summary

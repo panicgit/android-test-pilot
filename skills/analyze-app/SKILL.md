@@ -3,7 +3,8 @@ name: analyze-app
 description: "Android app static analysis — build navigation map, API scenarios, and View state map"
 disable-model-invocation: true
 user-invocable: true
-allowed-tools: Read Grep Glob Bash Write
+allowed-tools: ["Read", "Grep", "Glob", "Bash", "Write"]
+argument-hint: "(no arguments; reads the current project)"
 ---
 
 # Step 0: Android App Static Analysis

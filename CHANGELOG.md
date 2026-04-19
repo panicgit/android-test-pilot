@@ -5,6 +5,26 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+### Batch 2 — tier system refactor (improvement/batch-2-refactor)
+
+#### Architecture
+- **A3** — `LogcatSessionRegistry` extracted into `src/logcat-registry.ts`.
+  Module-level `activeSessions` Map + signal handlers gone. Registry is
+  DI-friendly — tests inject fresh instances, multi-server scenarios
+  no longer share state.
+- **A6 + A8 + A9** — all `atp_*` MCP tool registrations moved out of
+  server.ts (1083 → 870 lines) into `src/atp-tools.ts`. server.ts hosts
+  only the upstream mobile-mcp surface plus a single
+  `registerAtpTools(...)` call. Merge-conflict surface for upstream
+  rebases is now the mobile_* block only.
+- **UPSTREAM.md** documents fork-specific files, rebase procedure, and
+  the marketplace-only distribution policy.
+
+#### Tests (+7)
+- `test/logcat-registry.test.ts` — add/get/delete, per-device and
+  global cap enforcement, latestForDevice tie-break, two-registry
+  isolation, stopAndRemove.
+
 ### Batch 1 — security hardening + cleanup (improvement/batch-1-security-cleanup)
 
 #### Security

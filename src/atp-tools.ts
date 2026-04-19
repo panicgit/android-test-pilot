@@ -18,6 +18,7 @@ import { SnapshotTier } from "./tiers/snapshot-tier";
 import { loadAppMap } from "./app-map";
 import { validateScenarioFile } from "./scenario";
 import { trace } from "./logger";
+import { TraceContext } from "./tracing";
 import path from "node:path";
 
 // P10 — one runner, three tier instances shared across every atp_run_step
@@ -255,36 +256,50 @@ export const registerAtpTools = (deps: AtpToolsDeps): void => {
 				appMap,
 			};
 
-			// A5 — split action from verification.
+			// A5 — split action from verification. Wrapped in a trace so the
+			// agent (and operators reading $ATP_TRACE_FILE) can see tier
+			// decisions and per-phase latency (A10 / S3-4).
+			const tracer = new TraceContext();
 			const hasAction = !!tapTarget;
 			const hasVerification = !!(expectedLogcat && expectedLogcat.length > 0);
 
+			const runPhase = (phase: "act" | "verify") =>
+				tracer.span(`atp.tier_runner.${phase}`, {
+					"atp.phase": phase,
+					"atp.device_id": device,
+				}, () => runner.run({ ...context, phase }));
+
 			if (hasAction && hasVerification) {
-				const actResult = await runner.run({ ...context, phase: "act" });
+				const actResult = await runPhase("act");
 				if (actResult.status === "FAIL" || actResult.status === "ERROR") {
 					return JSON.stringify({
 						phase: "act",
 						...flattenTierResult(actResult),
 						appMapWarnings: appMapWarnings.length > 0 ? appMapWarnings : undefined,
+						traceSummary: tracer.summary(),
 					});
 				}
-				await new Promise(resolve => setTimeout(resolve, 300));
-				const verifyResult = await runner.run({ ...context, phase: "verify" });
+				await tracer.span("atp.settle_delay", { "atp.settle_ms": 300 }, async () => {
+					await new Promise(resolve => setTimeout(resolve, 300));
+				});
+				const verifyResult = await runPhase("verify");
 				return JSON.stringify({
 					actResult: flattenTierResult(actResult),
 					verifyResult: flattenTierResult(verifyResult),
 					...flattenTierResult(verifyResult),
 					appMapWarnings: appMapWarnings.length > 0 ? appMapWarnings : undefined,
+					traceSummary: tracer.summary(),
 				});
 			}
 
 			const phase: "act" | "verify" = hasAction && !hasVerification ? "act" : "verify";
-			const result = await runner.run({ ...context, phase });
+			const result = await runPhase(phase);
 
 			return JSON.stringify({
 				phase,
 				...flattenTierResult(result),
 				appMapWarnings: appMapWarnings.length > 0 ? appMapWarnings : undefined,
+				traceSummary: tracer.summary(),
 			});
 		},
 	);

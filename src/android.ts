@@ -198,13 +198,30 @@ export const redactLogcatLines = (lines: string[]): { lines: string[]; redactedC
 	return { lines: out, redactedCount };
 };
 
-/** Extract a readable message from an execFileSync throw (has stdout/stderr buffers). */
+/**
+ * Shape of errors thrown by Node's child_process APIs (execFile / spawn).
+ * Both stdout and stderr are present as Buffer or string depending on the
+ * encoding option; message is the short reason.
+ */
+interface ChildProcessError {
+	stdout?: Buffer | string;
+	stderr?: Buffer | string;
+	message?: string;
+}
+
+/** Type predicate narrowing unknown to ChildProcessError (T-R2). */
+const isChildProcessError = (e: unknown): e is ChildProcessError => {
+	return typeof e === "object" && e !== null &&
+		("stdout" in e || "stderr" in e || "message" in e);
+};
+
+/** Extract a readable message from a child-process throw. */
 const formatAdbError = (error: unknown): string => {
-	const err = error as { stdout?: Buffer | string; stderr?: Buffer | string; message?: string };
-	const stdout = err.stdout ? err.stdout.toString() : "";
-	const stderr = err.stderr ? err.stderr.toString() : "";
+	if (!isChildProcessError(error)) return String(error);
+	const stdout = error.stdout ? error.stdout.toString() : "";
+	const stderr = error.stderr ? error.stderr.toString() : "";
 	const output = (stdout + stderr).trim();
-	return output || err.message || String(error);
+	return output || error.message || String(error);
 };
 
 const BUTTON_MAP: Record<Button, string> = {

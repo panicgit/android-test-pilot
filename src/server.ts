@@ -99,13 +99,24 @@ export const createMcpServer = (): McpServer => {
 		destructiveHint?: boolean;
 	}
 
-	const tool = (name: string, title: string, description: string, paramsSchema: ZodSchemaShape, annotations: ToolAnnotations, cb: (args: any) => Promise<string>) => {
+	// T1 — tool() is generic over the Zod schema shape S, and the callback
+	// receives z.infer<ZodObject<S>> so TypeScript catches field name typos
+	// (e.g. `{ deviceId }` vs `{ device }`) at compile time instead of at
+	// the next tool call.
+	const tool = <S extends ZodSchemaShape>(
+		name: string,
+		title: string,
+		description: string,
+		paramsSchema: S,
+		annotations: ToolAnnotations,
+		cb: (args: z.infer<z.ZodObject<S>>) => Promise<string>,
+	): void => {
 		server.registerTool(name, {
 			title,
 			description,
 			inputSchema: paramsSchema,
 			annotations,
-		}, (async (args: any, _extra: any) => {
+		}, (async (args: z.infer<z.ZodObject<S>>) => {
 			try {
 				trace(`Invoking ${name} with args: ${JSON.stringify(args)}`);
 				const start = +new Date();
@@ -131,7 +142,7 @@ export const createMcpServer = (): McpServer => {
 					isError: true,
 				};
 			}
-		}) as any);
+		}) as Parameters<typeof server.registerTool>[2]);
 	};
 
 	const posthog = async (event: string, properties: Record<string, string | number>) => {
@@ -556,7 +567,10 @@ export const createMcpServer = (): McpServer => {
 		"Press a button on device",
 		{
 			device: DEVICE_SCHEMA,
-			button: z.string().describe("The button to press. Supported buttons: BACK (android only), HOME, VOLUME_UP, VOLUME_DOWN, ENTER, DPAD_CENTER (android tv only), DPAD_UP (android tv only), DPAD_DOWN (android tv only), DPAD_LEFT (android tv only), DPAD_RIGHT (android tv only)"),
+			button: z.enum([
+				"BACK", "HOME", "VOLUME_UP", "VOLUME_DOWN", "ENTER",
+				"DPAD_CENTER", "DPAD_UP", "DPAD_DOWN", "DPAD_LEFT", "DPAD_RIGHT",
+			]).describe("The button to press. Supported buttons: BACK (android only), HOME, VOLUME_UP, VOLUME_DOWN, ENTER, DPAD_CENTER (android tv only), DPAD_UP (android tv only), DPAD_DOWN (android tv only), DPAD_LEFT (android tv only), DPAD_RIGHT (android tv only)"),
 		},
 		{ destructiveHint: true },
 		async ({ device, button }) => {

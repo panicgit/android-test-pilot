@@ -5,6 +5,48 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+### Batch 1 — security hardening + cleanup (improvement/batch-1-security-cleanup)
+
+#### Security
+- **SR-4** — SSE bearer token comparison is now `crypto.timingSafeEqual`,
+  closing the first-differing-byte timing channel.
+- **SR-5** — `resolveAppMapDir()` realpaths and asserts containment
+  inside `ATP_PROJECT_ROOT`; symlinks escaping the project root are
+  refused.
+- **SR-6** — `MOBILEMCP_ALLOW_INSECURE_LISTEN=1` only permits loopback
+  hosts. Routable-interface bind without auth is a fatal refusal.
+- **SR-7** — `expectedLogcat.pattern` rejected at the API boundary if
+  it matches nested-unbounded-quantifier or unbounded-alternation
+  shapes known to cause catastrophic backtracking.
+- **SR-2** — card-number redaction Luhn-validates before replacing,
+  eliminating false positives on timestamps/trace IDs.
+
+#### Type safety
+- **T1** — `tool()` wrapper generic over the Zod schema shape; tool
+  callbacks receive `z.infer<ZodObject<S>>` so field-name typos and
+  type mismatches fail at compile time. Enforcement surfaced and fixed
+  a real issue: `mobile_press_button` schema corrected from
+  `z.string()` to `z.enum([...Button])`.
+- **T-R2** — `formatAdbError` replaces the unchecked `as` cast with
+  an `isChildProcessError` type predicate.
+- **T-R4** — `app-map.ts` collapses `existsSync`-then-`readFileSync`
+  into a single try/catch (TOCTOU fix).
+- **T-R6** — `flattenTierResult` uses explicit per-branch object
+  construction; no terminal cast.
+
+#### Performance / architecture
+- **A4** — `AbstractTier._robot` cache removed; tiers are stateless.
+- **P10** — single `SHARED_TIER_RUNNER` at module scope, reused across
+  every `atp_run_step` call.
+
+#### Tests (+17 cases)
+- `test/app-map-symlink.test.ts` — SR-5 containment (3 cases).
+- `test/flatten-tier-result.test.ts` — T4/T-R6 discriminated-union
+  flattening (4 cases).
+- `test/uiautomator-tier.test.ts` — A5 phase dispatch, tap-by-
+  resourceId, fallback paths (7 cases).
+- `test/redaction.test.ts` — Luhn false-positive guard (+1 case).
+
 ### Sprint 3 (improvement/sprint-3-final)
 
 #### Correctness

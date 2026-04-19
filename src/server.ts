@@ -22,6 +22,14 @@ import { ScreenshotTier } from "./tiers/screenshot-tier";
 import { TierContext, flattenTierResult } from "./tiers/types";
 import { loadAppMap } from "./app-map";
 
+// P10 — one runner, three tier instances shared across every atp_run_step
+// call. Tiers are stateless after A4, so sharing is safe under concurrency.
+const SHARED_TIER_RUNNER = new TierRunner([
+	new TextTier(),
+	new UiAutomatorTier(),
+	new ScreenshotTier(),
+]);
+
 const ALLOWED_SCREENSHOT_EXTENSIONS = [".png", ".jpg", ".jpeg"];
 const ALLOWED_RECORDING_EXTENSIONS = [".mp4"];
 
@@ -1005,11 +1013,7 @@ export const createMcpServer = (): McpServer => {
 				}
 			}
 
-			const runner = new TierRunner([
-				new TextTier(),
-				new UiAutomatorTier(),
-				new ScreenshotTier(),
-			]);
+			const runner = SHARED_TIER_RUNNER;
 
 			const { appMap, warnings: appMapWarnings } = loadAppMap();
 

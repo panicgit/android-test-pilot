@@ -20,22 +20,14 @@ export abstract class AbstractTier {
 	abstract readonly priority: number;
 
 	/**
-	 * Cached AndroidRobot instance.
-	 * Note: Single-threaded assumption — not safe for concurrent multi-device
-	 * runs on the same AbstractTier instance. Each TierRunner.run() should use
-	 * its own tier instances or target a single device.
-	 */
-	private _robot: AndroidRobot | null = null;
-
-	/**
-	 * Get or create an AndroidRobot for the given device.
-	 * Re-creates the robot if the device ID changes.
+	 * Construct a fresh AndroidRobot for the given context device.
+	 *
+	 * Tiers are stateless (A4) — safe to share across concurrent runs on
+	 * different devices. AndroidRobot's constructor does no I/O, so the
+	 * allocation is effectively free.
 	 */
 	protected getAndroidRobot(context: TierContext): AndroidRobot {
-		if (!this._robot || context.deviceId !== this._robot.getDeviceId()) {
-			this._robot = new AndroidRobot(context.deviceId);
-		}
-		return this._robot;
+		return new AndroidRobot(context.deviceId);
 	}
 
 	/**

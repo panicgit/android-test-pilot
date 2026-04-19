@@ -52,12 +52,37 @@ export interface TapTarget {
 	coordinates?: { x: number; y: number };
 }
 
+/**
+ * Visual-regression assertion for a step. When present, the SnapshotTier
+ * captures a screenshot and pixel-diffs it against a stored baseline.
+ * Baselines live at `.claude/baselines/{name}.png`.
+ */
+export interface ExpectedSnapshot {
+	/** Stable identifier — used as the baseline filename. */
+	name: string;
+	/**
+	 * Maximum allowed share of differing pixels (0-1). Defaults to 0.01
+	 * (1%). Lower = stricter.
+	 */
+	threshold?: number;
+	/**
+	 * If true and no baseline exists, capture the current screenshot as
+	 * the baseline and return SUCCESS. Defaults to true on first run.
+	 */
+	createIfMissing?: boolean;
+}
+
 /** A single test step parsed from a scenario file */
 export interface TestStep {
 	action: string;
 	expectedLogcat?: ExpectedLogcat[];
 	tapTarget?: TapTarget;
 	verification: string;
+	/**
+	 * Visual-regression contract. When set, SnapshotTier runs in the
+	 * verify phase and pixel-diffs against a stored baseline.
+	 */
+	expectedSnapshot?: ExpectedSnapshot;
 	/**
 	 * If true, TextTier accepts the step on dumpsys alone when expectedLogcat is
 	 * absent. Default false — TextTier falls back to UiAutomatorTier so the action

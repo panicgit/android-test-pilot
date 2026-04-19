@@ -14,6 +14,7 @@ import { TierRunner } from "./tiers/tier-runner";
 import { TextTier } from "./tiers/text-tier";
 import { UiAutomatorTier } from "./tiers/uiautomator-tier";
 import { ScreenshotTier } from "./tiers/screenshot-tier";
+import { SnapshotTier } from "./tiers/snapshot-tier";
 import { loadAppMap } from "./app-map";
 import { validateScenarioFile } from "./scenario";
 import { trace } from "./logger";
@@ -22,9 +23,10 @@ import path from "node:path";
 // P10 — one runner, three tier instances shared across every atp_run_step
 // call. Tiers are stateless after A4, so sharing is safe under concurrency.
 export const SHARED_TIER_RUNNER = new TierRunner([
-	new TextTier(),
-	new UiAutomatorTier(),
-	new ScreenshotTier(),
+	new SnapshotTier(),       // priority 0 — only runs when expectedSnapshot is set
+	new TextTier(),           // priority 1
+	new UiAutomatorTier(),    // priority 2
+	new ScreenshotTier(),     // priority 3 — last-resort visual fallback
 ]);
 
 // Generic parameters that mirror server.ts's tool() helper without
@@ -209,10 +211,15 @@ export const registerAtpTools = (deps: AtpToolsDeps): void => {
 				x: z.coerce.number().optional().describe("X coordinate to tap"),
 				y: z.coerce.number().optional().describe("Y coordinate to tap"),
 			}).optional().describe("Element to tap during this step"),
+			expectedSnapshot: z.object({
+				name: z.string().regex(/^[A-Za-z0-9._-]+$/).describe("Baseline identifier. Stored at .claude/baselines/{name}.png"),
+				threshold: z.number().min(0).max(1).optional().describe("Max share of differing pixels (0-1). Default 0.01."),
+				createIfMissing: z.boolean().optional().describe("Auto-capture the baseline on first run. Default true."),
+			}).optional().describe("Visual-regression assertion. When set, SnapshotTier pixel-diffs against a stored baseline. Intentionally preempts TextTier so a pixel regression can't pass on logcat alone."),
 			skipVerification: z.boolean().optional().describe("Accept dumpsys-only success when no expectedLogcat is provided. Default false (FALLBACK to next tier)."),
 		},
 		{ destructiveHint: true },
-		async ({ device, action, verification, expectedLogcat, tapTarget, skipVerification }) => {
+		async ({ device, action, verification, expectedLogcat, tapTarget, expectedSnapshot, skipVerification }) => {
 			const robot = await getAndroidRobotFromDevice(device);
 
 			if (expectedLogcat && expectedLogcat.length > 0) {
@@ -237,6 +244,11 @@ export const registerAtpTools = (deps: AtpToolsDeps): void => {
 						coordinates: (tapTarget.x !== undefined && tapTarget.y !== undefined)
 							? { x: tapTarget.x, y: tapTarget.y }
 							: undefined,
+					} : undefined,
+					expectedSnapshot: expectedSnapshot ? {
+						name: expectedSnapshot.name,
+						threshold: expectedSnapshot.threshold,
+						createIfMissing: expectedSnapshot.createIfMissing,
 					} : undefined,
 					skipVerification,
 				},

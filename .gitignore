@@ -6,3 +6,6 @@ lib/
 # Local-only state (dev environment)
 .claude/settings.local.json
 .omc/
+
+# Private Obsidian vault nested inside the repo (notes, reviews)
+/android-test-pilot/

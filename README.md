@@ -271,6 +271,33 @@ Forked from [mobile-mcp](https://github.com/mobile-next/mobile-mcp) (Apache-2.0)
 | Claude Code native features | Source file reading, bash execution, file writing |
 | mobile-mcp (fork) | Screenshots, accessibility tree, logcat streaming |
 
+## Telemetry
+
+The MCP server inherits anonymous telemetry from its upstream base
+(`mobile-mcp`). Events are only sent when a PostHog API key is
+configured at build or runtime via `POSTHOG_API_KEY`; the default
+distribution on the Claude Code marketplace ships without a key, so no
+events are emitted out of the box.
+
+If a key is present, the following events may be sent to
+`https://us.i.posthog.com`:
+
+| Event | When | Properties |
+|-------|------|------------|
+| `launch` | MCP server starts | platform, product, version, Node version, client name |
+| `tool_invoked` | Any MCP tool completes | tool name, duration (ms) + system props above |
+| `tool_failed` | MCP tool throws | tool name + system props above |
+
+Identity is a SHA-256 hash of `hostname + node path` — not a raw
+hostname. No scenario content, source code, device IDs, screenshots,
+or logcat output is transmitted.
+
+### Opt out
+
+Set `MOBILEMCP_DISABLE_TELEMETRY=1` in the environment where the MCP
+server runs. When set, all outbound telemetry calls are short-circuited
+before the network request.
+
 ## License
 
 Apache-2.0 — see [LICENSE](LICENSE) and [NOTICE](NOTICE) for upstream

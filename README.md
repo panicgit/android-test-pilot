@@ -189,7 +189,10 @@ Write test scenarios in natural-language markdown. See `templates/scenario.md` f
 
 ```
 android-test-pilot/
-├── .claude/skills/atp/          # Claude Code slash commands
+├── .claude-plugin/
+│   ├── plugin.json              # Plugin manifest (mcp + skills)
+│   └── marketplace.json         # Marketplace listing metadata
+├── skills/                      # Claude Code slash commands
 │   ├── analyze-app/SKILL.md     # /atp:analyze-app (Step 0)
 │   ├── check-logs/SKILL.md      # /atp:check-logs (Step 1)
 │   ├── run-test/SKILL.md        # /atp:run-test (Step 2)

@@ -75,4 +75,4 @@ Report any API call sites missing this log.
 |-----|---------|--------|
 | `ATP_SCREEN` | Screen entry/transition | `enter: {ClassName}` |
 | `ATP_RENDER` | View state change | `renderState: screen={name}, {key}={value}, ...` |
-| `ATP_API` | API response | `apiResponse: endpoint={endpoint}, status={status}, body={body}` |
+| `ATP_API` | API response | `apiResponse: endpoint={endpoint}, status={status}, bodyLength={bodyLength}` |

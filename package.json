@@ -34,8 +34,6 @@
   },
   "optionalDependencies": {
     "@mobilenext/mobilecli": "0.1.60",
-    "@types/pixelmatch": "^5.2.6",
-    "@types/pngjs": "^6.0.5",
     "pixelmatch": "^7.1.0",
     "pngjs": "^7.0.0",
     "sharp": "^0.33.0"
@@ -43,6 +41,8 @@
   "devDependencies": {
     "@types/express": "^5.0.3",
     "@types/node": "^22.0.0",
+    "@types/pixelmatch": "^5.2.6",
+    "@types/pngjs": "^6.0.5",
     "typescript": "^5.8.0"
   }
 }

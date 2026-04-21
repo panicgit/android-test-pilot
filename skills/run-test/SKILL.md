@@ -22,7 +22,7 @@ These rules are **non-negotiable**. Violating any of them is a test execution fa
    - The user *explicitly* asks for a screenshot (e.g., "take a screenshot", "show me the screen"), OR
    - Tier 1 (text) and Tier 2 (uiautomator) have both returned `FALLBACK` in the same step — and even then, `atp_run_step` handles it for you. Do not call the screenshot tool yourself.
 
-3. **Every step MUST pass `expectedLogcat` when logs exist.** Without `expectedLogcat`, Tier 1 has nothing to verify and will pass prematurely on dumpsys alone. Read `.claude/app-map/view_state_map.json` to find the `ATP_SCREEN` / `ATP_VIEW` / `ATP_API` tags for the target screen and include them.
+3. **Every step MUST pass `expectedLogcat` when logs exist.** Without `expectedLogcat`, Tier 1 has nothing to verify and will pass prematurely on dumpsys alone. Read `.claude/app-map/view_state_map.json` to find the `ATP_SCREEN` / `ATP_RENDER` / `ATP_API` tags for the target screen and include them.
 
 4. **Call `atp_logcat_start` BEFORE the first `atp_run_step`.** Without a live session, Tier 1 falls back to Tier 2/3 even when logs would have matched — this is exactly what causes "screenshots on step 1".
 
@@ -41,7 +41,7 @@ $ARGUMENTS
 If no scenario file path is provided, stop with:
 > No scenario file specified. Usage: `/atp:run-test scenarios/login.md`
 
-Scenario format reference: [`templates/scenario.md`](../../templates/scenario.md).
+Scenario format reference: [`templates/scenario.md`](https://github.com/panicgit/android-test-pilot/blob/main/templates/scenario.md) (also located at `templates/scenario.md` inside the plugin directory).
 Before running, call `atp_validate_scenario(path: "<path>")` to catch
 typos (ATP_VIEW vs ATP_RENDER) and malformed regex patterns up front.
 If the validator returns `ok: false`, stop and surface the errors —

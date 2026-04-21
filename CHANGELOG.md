@@ -3,6 +3,43 @@
 All notable changes are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.2.1] — 2026-04-21
+
+Plugin release-readiness hotfix. `v0.2.0` shipped with manifest schema
+drift that would have prevented Claude Code from registering either the
+skills or the MCP server on a strict-schema loader; `v0.2.1` corrects the
+manifest, fills documentation gaps, and commits compiled output so the
+plugin works from a bare git clone.
+
+### Fixed
+- Plugin manifest (`.claude-plugin/plugin.json`) switched from
+  unsupported `skills` + inline `mcp` fields to the canonical
+  `mcpServers: "./.mcp.json"` pointer. Renamed plugin from `atp` to
+  `android-test-pilot`. Added author/homepage/repository/license/keywords
+  metadata.
+- `.mcp.json` now uses `${CLAUDE_PLUGIN_ROOT}/lib/index.js` for portable
+  entry resolution.
+- `.gitignore` no longer hides `lib/`; the compiled MCP entry now ships
+  with the repo so a fresh marketplace install works without a build
+  step.
+- `skills/run-test/SKILL.md` — `ATP_VIEW` typo corrected to `ATP_RENDER`;
+  broken relative link to `templates/scenario.md` replaced with the
+  GitHub URL.
+- `skills/check-logs/SKILL.md` — `ATP_API` format table aligned with
+  the PII-safe `bodyLength=` guidance (previously contradicted its own
+  security note).
+- `src/server.ts` — removed unused duplicate `isLikelyCatastrophicRegex`.
+- `package.json` — `@types/pixelmatch` and `@types/pngjs` moved from
+  `optionalDependencies` to `devDependencies`.
+- `README.md` — project-structure diagram updated to match the actual
+  `skills/` root-level layout.
+
+### Added
+- `README.md` "Telemetry" section documenting which events may fire
+  (only when a `POSTHOG_API_KEY` is configured — the default
+  distribution ships without one), what is and is not transmitted, and
+  the `MOBILEMCP_DISABLE_TELEMETRY=1` opt-out.
+
 ## [Unreleased]
 
 ### Batch 4 — docs + DX (improvement/batch-4-docs-dx)

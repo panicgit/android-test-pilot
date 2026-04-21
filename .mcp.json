@@ -2,7 +2,7 @@
   "mcpServers": {
     "android-test-pilot": {
       "command": "node",
-      "args": ["lib/index.js"],
+      "args": ["${CLAUDE_PLUGIN_ROOT}/lib/index.js"],
       "env": {
         "MAX_MCP_OUTPUT_TOKENS": "50000"
       }

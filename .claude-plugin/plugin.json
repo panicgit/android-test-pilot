@@ -1,13 +1,21 @@
 {
-  "name": "atp",
-  "version": "0.2.0",
+  "name": "android-test-pilot",
+  "version": "0.2.1",
   "description": "Automated Android app testing with 3-tier strategy (text → uiautomator → screenshot) powered by Claude Code",
-  "skills": "./skills/",
-  "mcp": {
-    "command": "node",
-    "args": ["lib/index.js"],
-    "env": {
-      "MAX_MCP_OUTPUT_TOKENS": "50000"
-    }
-  }
+  "author": {
+    "name": "panicgit"
+  },
+  "homepage": "https://github.com/panicgit/android-test-pilot",
+  "repository": "https://github.com/panicgit/android-test-pilot",
+  "license": "Apache-2.0",
+  "keywords": [
+    "android",
+    "testing",
+    "automation",
+    "mcp",
+    "claude-code",
+    "logcat",
+    "uiautomator"
+  ],
+  "mcpServers": "./.mcp.json"
 }

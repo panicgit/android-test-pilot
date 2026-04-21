@@ -3,6 +3,28 @@
 All notable changes are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.2.2] — 2026-04-21
+
+Hotfix: `/atp:*` slash commands did not register after `v0.2.1` install.
+
+### Fixed
+- Added `commands/` directory with `analyze-app.md`, `check-logs.md`,
+  `run-test.md`, and `app-map.md`. Claude Code discovers slash commands
+  from `commands/`, not `skills/` (skills are for model-driven
+  auto-invocation, not user-typed `/command` invocation). The 0.2.1
+  install exposed only skills, so `/atp:analyze-app` failed with
+  "command not found".
+- Renamed the plugin from `android-test-pilot` back to `atp` in
+  `.claude-plugin/plugin.json` so slash commands resolve to
+  `/atp:<name>` as the README documents. The marketplace listing
+  (`.claude-plugin/marketplace.json`) remains `android-test-pilot`;
+  the two names are independent.
+
+### Notes
+- Skills under `skills/` remain in place so the model can still
+  auto-invoke them when conversational context matches their
+  description. Commands and skills coexist.
+
 ## [0.2.1] — 2026-04-21
 
 Plugin release-readiness hotfix. `v0.2.0` shipped with manifest schema

@@ -1,6 +1,6 @@
 {
-  "name": "android-test-pilot",
-  "version": "0.2.1",
+  "name": "atp",
+  "version": "0.2.2",
   "description": "Automated Android app testing with 3-tier strategy (text → uiautomator → screenshot) powered by Claude Code",
   "author": {
     "name": "panicgit"
